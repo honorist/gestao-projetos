@@ -131,18 +131,101 @@ window.PortfolioView = {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="m in monthlyData" :key="m.month">
-                <td style="font-weight:600;white-space:nowrap">{{ m.label }}</td>
-                <td class="text-right" style="color:var(--green);white-space:nowrap">{{ fc(m.baseline) }}</td>
-                <td class="text-right" style="color:var(--info);white-space:nowrap">{{ fc(m.actual) }}</td>
-                <td class="text-right" style="font-weight:700;white-space:nowrap" :style="m.pct !== null ? adherenceStyle(m.pct) : ''">
-                  {{ m.pct !== null ? m.pct.toFixed(1) + '%' : '—' }}
-                </td>
-                <td>
-                  <span v-if="m.pct !== null" class="badge" :class="adherenceBadge(m.pct)">{{ adherenceLabel(m.pct) }}</span>
-                  <span v-else class="text-muted text-sm">—</span>
-                </td>
-              </tr>
+              <template v-for="m in monthlyData" :key="m.month">
+                <!-- Linha do mês -->
+                <tr @click="toggleMonth(m.month)" style="cursor:pointer;transition:background .12s"
+                  :style="selectedMonth === m.month ? 'background:rgba(29,107,63,.09)' : ''">
+                  <td style="font-weight:600;white-space:nowrap">
+                    <span style="margin-right:6px;font-size:11px;color:var(--text-muted)">{{ selectedMonth === m.month ? '▼' : '▶' }}</span>
+                    {{ m.label }}
+                  </td>
+                  <td class="text-right" style="color:var(--green);white-space:nowrap">{{ fc(m.baseline) }}</td>
+                  <td class="text-right" style="color:var(--info);white-space:nowrap">{{ fc(m.actual) }}</td>
+                  <td class="text-right" style="font-weight:700;white-space:nowrap" :style="m.pct !== null ? adherenceStyle(m.pct) : ''">
+                    {{ m.pct !== null ? m.pct.toFixed(1) + '%' : '—' }}
+                  </td>
+                  <td>
+                    <span v-if="m.pct !== null" class="badge" :class="adherenceBadge(m.pct)">{{ adherenceLabel(m.pct) }}</span>
+                    <span v-else class="text-muted text-sm">—</span>
+                  </td>
+                </tr>
+
+                <!-- Drilldown nível 1: projetos do mês -->
+                <tr v-if="selectedMonth === m.month" style="background:rgba(29,107,63,.04)">
+                  <td colspan="5" style="padding:0">
+                    <div style="padding:10px 16px 14px">
+                      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+                        Detalhamento — {{ m.label }}
+                      </div>
+                      <table class="table" style="font-size:13px;margin:0">
+                        <thead>
+                          <tr style="background:var(--bg)">
+                            <th>Projeto</th>
+                            <th>Responsável</th>
+                            <th style="text-align:right">Baseline</th>
+                            <th style="text-align:right">Realizado</th>
+                            <th style="text-align:right">Aderência</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <template v-for="row in monthProjectDrilldown(m.month)" :key="row.id">
+                            <!-- Linha do projeto -->
+                            <tr @click.stop="toggleProjectKey(row.id, m.month)"
+                              style="cursor:pointer;transition:background .1s"
+                              :style="selectedProjectKey === row.id + '|' + m.month ? 'background:rgba(25,118,210,.08)' : ''">
+                              <td style="font-weight:600">
+                                <span style="margin-right:5px;font-size:10px;color:var(--text-muted)">{{ selectedProjectKey === row.id + '|' + m.month ? '▼' : '▶' }}</span>
+                                {{ row.name }}
+                              </td>
+                              <td class="text-sm text-muted">{{ row.responsible || '—' }}</td>
+                              <td class="text-right" style="color:var(--green)">{{ fc(row.baseline) }}</td>
+                              <td class="text-right" style="color:var(--info)">{{ fc(row.actual) }}</td>
+                              <td class="text-right" style="font-weight:700" :style="row.pct !== null ? adherenceStyle(row.pct) : ''">
+                                {{ row.pct !== null ? row.pct.toFixed(1) + '%' : '—' }}
+                              </td>
+                              <td>
+                                <span v-if="row.pct !== null" class="badge" :class="adherenceBadge(row.pct)">{{ adherenceLabel(row.pct) }}</span>
+                                <span v-else class="text-muted text-sm">—</span>
+                              </td>
+                            </tr>
+                            <!-- Drilldown nível 2: itens/compras do projeto no mês -->
+                            <tr v-if="selectedProjectKey === row.id + '|' + m.month" style="background:rgba(25,118,210,.04)">
+                              <td colspan="6" style="padding:6px 16px 12px 32px">
+                                <div v-if="row.items.length === 0" class="text-muted text-sm" style="padding:4px 0">
+                                  Sem itens cadastrados para este mês.
+                                </div>
+                                <table v-else class="table" style="font-size:12px;margin:0">
+                                  <thead>
+                                    <tr style="background:var(--surface)">
+                                      <th>Compra / Item</th>
+                                      <th style="text-align:right">Tendência</th>
+                                      <th style="text-align:right">Realizado</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr v-for="(item, i) in row.items" :key="i"
+                                      class="clickable" @click.stop="item.purchaseId ? $router.push('/purchases/' + item.purchaseId) : null">
+                                      <td>{{ item.label }}</td>
+                                      <td class="text-right" style="color:var(--warning)">{{ fc(item.trend) }}</td>
+                                      <td class="text-right" style="color:var(--info)">{{ fc(item.actual) }}</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                                <div style="margin-top:8px">
+                                  <button class="btn btn-ghost btn-sm" style="font-size:11px" @click.stop="$router.push('/projects/' + row.id)">
+                                    → Abrir projeto
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -261,6 +344,8 @@ window.PortfolioView = {
       filterLeader: '',
       selectedIds: [],
       chartInstance: null,
+      selectedMonth: null,
+      selectedProjectKey: null, // "projectId|month"
     };
   },
 
@@ -387,6 +472,55 @@ window.PortfolioView = {
 
   methods: {
     fc(v) { return formatCurrency(v); },
+
+    toggleMonth(month) {
+      this.selectedMonth = this.selectedMonth === month ? null : month;
+      this.selectedProjectKey = null;
+    },
+
+    toggleProjectKey(projectId, month) {
+      const key = projectId + '|' + month;
+      this.selectedProjectKey = this.selectedProjectKey === key ? null : key;
+    },
+
+    monthProjectDrilldown(month) {
+      return this.selectedProjects.map(p => {
+        const row = (p.disbursements || []).find(r => r.month === month);
+        if (!row) return null;
+        const baseline = numberInput(row.baseline);
+        const actual   = this.rowActual(row);
+        if (baseline === 0 && actual === 0) return null;
+        const pct = baseline > 0 ? (actual / baseline * 100) : null;
+
+        // Resolve itens (trend_items) com nome da compra
+        const items = (row.trend_items || []).map(ti => {
+          let label = '—', purchaseId = null;
+          if (ti.purchase_id && ti.purchase_id.startsWith('rateio:')) {
+            const rid = ti.purchase_id.replace('rateio:', '');
+            const rat = (Store.state.rateios || []).find(r => r.id === rid);
+            label = rat ? `⚖️ ${rat.description || rat.supplier || 'Rateio'}` : 'Rateio';
+          } else if (ti.purchase_id) {
+            const pur = Store.state.purchases.find(pu => pu.id === ti.purchase_id);
+            if (pur) {
+              label = [pur.number ? 'RC ' + pur.number : '', pur.description, pur.supplier].filter(Boolean).join(' · ');
+              purchaseId = pur.id;
+            }
+          }
+          return { label, trend: numberInput(ti.value), actual: numberInput(ti.actual), purchaseId };
+        });
+
+        // Fallback: sem trend_items mas tem valores legacy
+        if (items.length === 0 && (this.rowTrend(row) > 0 || actual > 0)) {
+          items.push({ label: 'Valor do mês', trend: this.rowTrend(row), actual, purchaseId: null });
+        }
+
+        return { id: p.id, name: p.name, responsible: p.responsible, baseline, actual, pct, items };
+      }).filter(Boolean).sort((a, b) => {
+        if (a.pct !== null && b.pct !== null) return a.pct - b.pct;
+        if (a.pct !== null) return -1;
+        return 1;
+      });
+    },
 
     toggleProject(id) {
       const idx = this.selectedIds.indexOf(id);

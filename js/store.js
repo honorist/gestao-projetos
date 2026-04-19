@@ -113,12 +113,30 @@
 
     async init() {
       try {
-        const data = await FirebaseService.load();
-        if (data) {
-          Object.assign(state, data);
-        } else {
+        const firebaseData = await FirebaseService.load();
+        let localData = null;
+        try { localData = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (_) {}
+
+        const fbHasProjects = firebaseData && Array.isArray(firebaseData.projects) && firebaseData.projects.length > 0;
+        const localHasProjects = localData && Array.isArray(localData.projects) && localData.projects.length > 0;
+
+        if (fbHasProjects) {
+          // Firebase é fonte da verdade — tem projetos
+          Object.assign(state, firebaseData);
+        } else if (localHasProjects) {
+          // Firebase vazio mas localStorage tem dados — migrar para Firebase
+          Object.assign(state, localData);
+          applyMigrations();
+          _ignoreSnapshot = true;
+          await FirebaseService.save(JSON.parse(JSON.stringify(state)));
+          setTimeout(() => { _ignoreSnapshot = false; }, 1500);
+        } else if (firebaseData) {
+          Object.assign(state, firebaseData);
+        } else if (localData) {
+          Object.assign(state, localData);
           await this.save();
         }
+
         applyMigrations();
 
         // Escuta mudanças em tempo real de outros usuários
@@ -134,6 +152,22 @@
           if (saved) Object.assign(state, saved);
         } catch (_) {}
         applyMigrations();
+      }
+    },
+
+    async syncLocalToFirebase() {
+      try {
+        const localData = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (!localData) return false;
+        Object.assign(state, localData);
+        applyMigrations();
+        _ignoreSnapshot = true;
+        await FirebaseService.save(JSON.parse(JSON.stringify(state)));
+        setTimeout(() => { _ignoreSnapshot = false; }, 1500);
+        return true;
+      } catch (e) {
+        console.error('Erro ao sincronizar:', e);
+        return false;
       }
     },
 

@@ -360,6 +360,11 @@ window.SettingsView = {
                 <button class="btn btn-secondary" @click="$refs.fileInput.click()">⬆️ Importar Backup</button>
               </div>
               <div style="border-left:1px solid var(--border);padding-left:16px">
+                <div style="font-weight:600;margin-bottom:6px;color:#1565C0">Sincronizar local → Firebase</div>
+                <div class="text-sm text-muted" style="margin-bottom:10px">Se os dados do seu navegador estiverem mais completos que o Firebase, use isso para enviá-los.</div>
+                <button class="btn btn-secondary" @click="syncLocalToFirebase" style="border-color:#1565C0;color:#1565C0">☁️ Sincronizar para Nuvem</button>
+              </div>
+              <div style="border-left:1px solid var(--border);padding-left:16px">
                 <div style="font-weight:600;margin-bottom:6px;color:var(--danger)">Resetar dados</div>
                 <div class="text-sm text-muted" style="margin-bottom:10px">Apaga <strong>todos</strong> os dados e reinicia com padrões.</div>
                 <button class="btn btn-danger" @click="resetData">🗑️ Resetar Tudo</button>
@@ -571,6 +576,13 @@ window.SettingsView = {
       if (action.includes('delete') || action === 'reset_data') return 'badge-red';
       if (action.includes('add') || action === 'import_backup' || action === 'backup_folder_set') return 'badge-green';
       return 'badge-blue';
+    },
+
+    async syncLocalToFirebase() {
+      const ok = await Store.syncLocalToFirebase();
+      this.importMsg = ok ? 'Dados locais sincronizados para o Firebase com sucesso!' : 'Nenhum dado local encontrado ou erro ao sincronizar.';
+      this.importMsgType = ok ? 'info' : 'danger';
+      setTimeout(() => { this.importMsg = ''; }, 5000);
     },
 
     // Manual backup

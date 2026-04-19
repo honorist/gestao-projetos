@@ -165,7 +165,8 @@ window.PortfolioView = {
                             <th style="text-align:right">Baseline</th>
                             <th style="text-align:right">Previsto</th>
                             <th style="text-align:right">Realizado</th>
-                            <th style="text-align:right">Aderência</th>
+                            <th style="text-align:right">Ader. BL</th>
+                            <th style="text-align:right">Ader. Previsto</th>
                             <th>Status</th>
                           </tr>
                         </thead>
@@ -183,17 +184,20 @@ window.PortfolioView = {
                               <td class="text-right" style="color:var(--green)">{{ fc(row.baseline) }}</td>
                               <td class="text-right" style="color:var(--warning)">{{ fc(row.trend) }}</td>
                               <td class="text-right" style="color:var(--info)">{{ fc(row.actual) }}</td>
-                              <td class="text-right" style="font-weight:700" :style="row.pct !== null ? adherenceStyle(row.pct) : ''">
-                                {{ row.pct !== null ? row.pct.toFixed(1) + '%' : '—' }}
+                              <td class="text-right" style="font-weight:700" :style="row.pctBL !== null ? adherenceStyle(row.pctBL) : ''">
+                                {{ row.pctBL !== null ? row.pctBL.toFixed(1) + '%' : '—' }}
+                              </td>
+                              <td class="text-right" style="font-weight:700" :style="row.pctTrend !== null ? adherenceStyle(row.pctTrend) : ''">
+                                {{ row.pctTrend !== null ? row.pctTrend.toFixed(1) + '%' : '—' }}
                               </td>
                               <td>
-                                <span v-if="row.pct !== null" class="badge" :class="adherenceBadge(row.pct)">{{ adherenceLabel(row.pct) }}</span>
+                                <span v-if="row.pctBL !== null" class="badge" :class="adherenceBadge(row.pctBL)">{{ adherenceLabel(row.pctBL) }}</span>
                                 <span v-else class="text-muted text-sm">—</span>
                               </td>
                             </tr>
                             <!-- Drilldown nível 2: itens/compras do projeto no mês -->
                             <tr v-if="selectedProjectKey === row.id + '|' + m.month" style="background:rgba(25,118,210,.04)">
-                              <td colspan="7" style="padding:6px 16px 12px 32px">
+                              <td colspan="8" style="padding:6px 16px 12px 32px">
                                 <div v-if="row.items.length === 0" class="text-muted text-sm" style="padding:4px 0">
                                   Sem itens cadastrados para este mês.
                                 </div>
@@ -242,11 +246,12 @@ window.PortfolioView = {
               <tr>
                 <th>Projeto</th>
                 <th>Responsável</th>
-                <th class="text-right">Base Acumulada</th>
-                <th class="text-right">Realizado Acumulado</th>
-                <th class="text-right">Aderência</th>
+                <th class="text-right">Base Acum.</th>
+                <th class="text-right">Previsto Acum.</th>
+                <th class="text-right">Realizado Acum.</th>
+                <th class="text-right">Ader. BL</th>
+                <th class="text-right">Ader. Previsto</th>
                 <th>Status</th>
-                <th class="text-right">Tendência Total</th>
               </tr>
             </thead>
             <tbody>
@@ -254,9 +259,13 @@ window.PortfolioView = {
                 <td style="font-weight:600">{{ p.name }}</td>
                 <td class="text-sm text-muted">{{ p.responsible || '—' }}</td>
                 <td class="text-right" style="color:var(--green)">{{ fc(adherence(p).baselineElapsed) }}</td>
+                <td class="text-right" style="color:var(--warning)">{{ fc(adherence(p).trendElapsed) }}</td>
                 <td class="text-right" style="color:var(--info)">{{ fc(adherence(p).actualElapsed) }}</td>
                 <td class="text-right" style="font-weight:700" :style="adherenceStyle(adherence(p).pct)">
                   {{ adherence(p).baselineElapsed > 0 ? adherence(p).pct.toFixed(1) + '%' : '—' }}
+                </td>
+                <td class="text-right" style="font-weight:700" :style="adherenceStyle(adherence(p).pctTrend)">
+                  {{ adherence(p).trendElapsed > 0 ? adherence(p).pctTrend.toFixed(1) + '%' : '—' }}
                 </td>
                 <td>
                   <span v-if="adherence(p).baselineElapsed > 0" class="badge" :class="adherenceBadge(adherence(p).pct)">
@@ -264,23 +273,25 @@ window.PortfolioView = {
                   </span>
                   <span v-else class="text-muted text-sm">—</span>
                 </td>
-                <td class="text-right" style="color:var(--warning)">{{ fc(projectTotals(p).trend) }}</td>
               </tr>
             </tbody>
             <tfoot style="background:var(--bg)">
               <tr>
                 <td colspan="2" style="font-weight:700;padding:11px 14px">Total Portfólio</td>
                 <td class="text-right" style="font-weight:700;padding:11px 14px;color:var(--green)">{{ fc(portfolioAdherence.baselineElapsed) }}</td>
+                <td class="text-right" style="font-weight:700;padding:11px 14px;color:var(--warning)">{{ fc(portfolioAdherence.trendElapsed) }}</td>
                 <td class="text-right" style="font-weight:700;padding:11px 14px;color:var(--info)">{{ fc(portfolioAdherence.actualElapsed) }}</td>
                 <td class="text-right" style="font-weight:700;padding:11px 14px" :style="adherenceStyle(portfolioAdherence.pct)">
                   {{ portfolioAdherence.baselineElapsed > 0 ? portfolioAdherence.pct.toFixed(1) + '%' : '—' }}
+                </td>
+                <td class="text-right" style="font-weight:700;padding:11px 14px" :style="adherenceStyle(portfolioAdherence.pctTrend)">
+                  {{ portfolioAdherence.trendElapsed > 0 ? portfolioAdherence.pctTrend.toFixed(1) + '%' : '—' }}
                 </td>
                 <td>
                   <span v-if="portfolioAdherence.baselineElapsed > 0" class="badge" :class="adherenceBadge(portfolioAdherence.pct)">
                     {{ adherenceLabel(portfolioAdherence.pct) }}
                   </span>
                 </td>
-                <td class="text-right" style="font-weight:700;padding:11px 14px;color:var(--warning)">{{ fc(totals.trend) }}</td>
               </tr>
             </tfoot>
           </table>
@@ -293,11 +304,13 @@ window.PortfolioView = {
         <div class="table-wrap">
           <table class="table" style="table-layout:fixed;width:100%">
             <colgroup>
-              <col style="width:30%">
+              <col style="width:25%">
+              <col style="width:90px">
+              <col style="width:130px">
+              <col style="width:130px">
+              <col style="width:130px">
               <col style="width:100px">
-              <col style="width:160px">
-              <col style="width:160px">
-              <col style="width:100px">
+              <col style="width:110px">
               <col>
             </colgroup>
             <thead>
@@ -305,15 +318,17 @@ window.PortfolioView = {
                 <th>Projeto</th>
                 <th>Mês</th>
                 <th style="text-align:right">Baseline</th>
+                <th style="text-align:right">Previsto</th>
                 <th style="text-align:right">Realizado</th>
-                <th style="text-align:right">Aderência</th>
+                <th style="text-align:right">Ader. BL</th>
+                <th style="text-align:right">Ader. Previsto</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
               <template v-for="grp in projectMonthlyRows" :key="grp.projectId">
                 <tr style="background:var(--bg)">
-                  <td colspan="6" style="font-weight:700;font-size:13px;padding:8px 14px;border-top:2px solid var(--border)">
+                  <td colspan="8" style="font-weight:700;font-size:13px;padding:8px 14px;border-top:2px solid var(--border)">
                     {{ grp.name }}
                     <span style="font-weight:400;color:var(--text-muted);font-size:12px;margin-left:8px">{{ grp.responsible }}</span>
                   </td>
@@ -322,9 +337,13 @@ window.PortfolioView = {
                   <td></td>
                   <td style="color:var(--text-muted);font-size:13px">{{ r.label }}</td>
                   <td class="text-right" style="color:var(--green)">{{ fc(r.baseline) }}</td>
+                  <td class="text-right" style="color:var(--warning)">{{ fc(r.trend) }}</td>
                   <td class="text-right" style="color:var(--info)">{{ fc(r.actual) }}</td>
                   <td class="text-right" style="font-weight:700" :style="r.pct !== null ? adherenceStyle(r.pct) : ''">
                     {{ r.pct !== null ? r.pct.toFixed(1) + '%' : '—' }}
+                  </td>
+                  <td class="text-right" style="font-weight:700" :style="r.pctTrend !== null ? adherenceStyle(r.pctTrend) : ''">
+                    {{ r.pctTrend !== null ? r.pctTrend.toFixed(1) + '%' : '—' }}
                   </td>
                   <td>
                     <span v-if="r.pct !== null" class="badge" :class="adherenceBadge(r.pct)">{{ adherenceLabel(r.pct) }}</span>
@@ -407,8 +426,14 @@ window.PortfolioView = {
           .sort((a, b) => a.month.localeCompare(b.month))
           .map(r => {
             const baseline = numberInput(r.baseline);
+            const trend    = this.rowTrend(r);
             const actual   = this.rowActual(r);
-            return { month: r.month, label: formatMonth(r.month), baseline, actual, pct: baseline > 0 ? (actual / baseline * 100) : null };
+            return {
+              month: r.month, label: formatMonth(r.month),
+              baseline, trend, actual,
+              pct:      baseline > 0 ? (actual / baseline * 100) : null,
+              pctTrend: trend    > 0 ? (actual / trend    * 100) : null,
+            };
           })
           .filter(r => r.baseline > 0 || r.actual > 0);
         return { projectId: p.id, name: p.name, responsible: p.responsible || '—', rows };
@@ -452,14 +477,16 @@ window.PortfolioView = {
     },
 
     portfolioAdherence() {
-      let baselineElapsed = 0, actualElapsed = 0;
+      let baselineElapsed = 0, trendElapsed = 0, actualElapsed = 0;
       this.selectedProjects.forEach(p => {
         const a = this.adherence(p);
         baselineElapsed += a.baselineElapsed;
+        trendElapsed    += a.trendElapsed;
         actualElapsed   += a.actualElapsed;
       });
-      const pct = baselineElapsed > 0 ? (actualElapsed / baselineElapsed * 100) : 0;
-      return { baselineElapsed, actualElapsed, pct };
+      const pct      = baselineElapsed > 0 ? (actualElapsed / baselineElapsed * 100) : 0;
+      const pctTrend = trendElapsed    > 0 ? (actualElapsed / trendElapsed    * 100) : 0;
+      return { baselineElapsed, trendElapsed, actualElapsed, pct, pctTrend };
     },
   },
 
@@ -493,7 +520,8 @@ window.PortfolioView = {
         const trend    = this.rowTrend(row);
         const actual   = this.rowActual(row);
         if (baseline === 0 && trend === 0 && actual === 0) return null;
-        const pct = baseline > 0 ? (actual / baseline * 100) : null;
+        const pctBL    = baseline > 0 ? (actual / baseline * 100) : null;
+        const pctTrend = trend    > 0 ? (actual / trend    * 100) : null;
 
         // Resolve itens (trend_items) com nome da compra
         const items = (row.trend_items || []).map(ti => {
@@ -517,7 +545,7 @@ window.PortfolioView = {
           items.push({ label: 'Valor do mês', trend: this.rowTrend(row), actual, purchaseId: null });
         }
 
-        return { id: p.id, name: p.name, responsible: p.responsible, baseline, trend, actual, pct, items };
+        return { id: p.id, name: p.name, responsible: p.responsible, baseline, trend, actual, pctBL, pctTrend, items };
       }).filter(Boolean).sort((a, b) => {
         if (a.pct !== null && b.pct !== null) return a.pct - b.pct;
         if (a.pct !== null) return -1;
@@ -547,9 +575,11 @@ window.PortfolioView = {
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const elapsed = (p.disbursements || []).filter(r => r.month <= currentMonth);
       const baselineElapsed = elapsed.reduce((s, r) => s + numberInput(r.baseline), 0);
+      const trendElapsed    = elapsed.reduce((s, r) => s + this.rowTrend(r), 0);
       const actualElapsed   = elapsed.reduce((s, r) => s + this.rowActual(r), 0);
-      const pct = baselineElapsed > 0 ? (actualElapsed / baselineElapsed * 100) : 0;
-      return { baselineElapsed, actualElapsed, pct };
+      const pct      = baselineElapsed > 0 ? (actualElapsed / baselineElapsed * 100) : 0;
+      const pctTrend = trendElapsed    > 0 ? (actualElapsed / trendElapsed    * 100) : 0;
+      return { baselineElapsed, trendElapsed, actualElapsed, pct, pctTrend };
     },
 
     adherenceStyle(pct) {

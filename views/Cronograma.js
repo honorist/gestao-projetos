@@ -120,19 +120,67 @@ window.CronogramaView = {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="m in monthlyData" :key="m.month">
-                <td style="font-weight:600;white-space:nowrap">{{ m.label }}</td>
-                <td class="text-right" style="color:#7AB531">{{ m.lb !== null ? m.lb.toFixed(1) + '%' : '—' }}</td>
-                <td class="text-right" style="color:var(--green)">{{ m.planned !== null ? m.planned.toFixed(1) + '%' : '—' }}</td>
-                <td class="text-right" style="color:var(--info)">{{ m.actual !== null ? m.actual.toFixed(1) + '%' : '—' }}</td>
-                <td class="text-right" style="font-weight:700" :style="devStyle(m.dev)">
-                  {{ m.dev !== null ? (m.dev > 0 ? '+' : '') + m.dev.toFixed(1) + ' pp' : '—' }}
-                </td>
-                <td>
-                  <span v-if="m.dev !== null" class="badge" :class="devBadge(m.dev)">{{ devLabel(m.dev) }}</span>
-                  <span v-else class="text-muted text-sm">—</span>
-                </td>
-              </tr>
+              <template v-for="m in monthlyData" :key="m.month">
+                <tr @click="toggleMonth(m.month)"
+                  style="cursor:pointer;transition:background .12s"
+                  :style="selectedMonth === m.month ? 'background:rgba(29,107,63,.09)' : ''">
+                  <td style="font-weight:600;white-space:nowrap">
+                    <span style="margin-right:6px;font-size:11px;color:var(--text-muted)">{{ selectedMonth === m.month ? '▼' : '▶' }}</span>
+                    {{ m.label }}
+                  </td>
+                  <td class="text-right" style="color:#7AB531">{{ m.lb !== null ? m.lb.toFixed(1) + '%' : '—' }}</td>
+                  <td class="text-right" style="color:var(--green)">{{ m.planned !== null ? m.planned.toFixed(1) + '%' : '—' }}</td>
+                  <td class="text-right" style="color:var(--info)">{{ m.actual !== null ? m.actual.toFixed(1) + '%' : '—' }}</td>
+                  <td class="text-right" style="font-weight:700" :style="devStyle(m.dev)">
+                    {{ m.dev !== null ? (m.dev > 0 ? '+' : '') + m.dev.toFixed(1) + ' pp' : '—' }}
+                  </td>
+                  <td>
+                    <span v-if="m.dev !== null" class="badge" :class="devBadge(m.dev)">{{ devLabel(m.dev) }}</span>
+                    <span v-else class="text-muted text-sm">—</span>
+                  </td>
+                </tr>
+                <!-- Drilldown inline -->
+                <tr v-if="selectedMonth === m.month" style="background:rgba(29,107,63,.04)">
+                  <td colspan="6" style="padding:0">
+                    <div style="padding:12px 16px 16px">
+                      <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">
+                        Detalhamento — {{ m.label }}
+                      </div>
+                      <table class="table" style="font-size:13px;margin:0">
+                        <thead>
+                          <tr style="background:var(--bg)">
+                            <th>Projeto</th>
+                            <th>Responsável</th>
+                            <th style="text-align:right">LB (%)</th>
+                            <th style="text-align:right">Previsto (%)</th>
+                            <th style="text-align:right">Realizado (%)</th>
+                            <th style="text-align:right">Desvio (pp)</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="row in monthDrilldown(m.month)" :key="row.id"
+                            class="clickable" @click.stop="$router.push('/projects/' + row.id)">
+                            <td style="font-weight:600">{{ row.name }}</td>
+                            <td class="text-sm text-muted">{{ row.responsible || '—' }}</td>
+                            <td class="text-right" style="color:#7AB531">{{ row.lb !== null ? row.lb.toFixed(1) + '%' : '—' }}</td>
+                            <td class="text-right" style="color:var(--green)">{{ row.planned !== null ? row.planned.toFixed(1) + '%' : '—' }}</td>
+                            <td class="text-right" style="color:var(--info)">{{ row.actual !== null ? row.actual.toFixed(1) + '%' : '—' }}</td>
+                            <td class="text-right" style="font-weight:700" :style="devStyle(row.dev)">
+                              {{ row.dev !== null ? (row.dev > 0 ? '+' : '') + row.dev.toFixed(1) + ' pp' : '—' }}
+                            </td>
+                            <td>
+                              <span v-if="row.dev !== null" class="badge" :class="devBadge(row.dev)">{{ devLabel(row.dev) }}</span>
+                              <span v-else-if="row.hasEntry" class="text-muted text-sm">sem realizado</span>
+                              <span v-else class="text-muted text-sm">sem dados</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -255,6 +303,7 @@ window.CronogramaView = {
       filterCoordinator: '',
       filterLeader: '',
       selectedIds: [],
+      selectedMonth: null,
       chartInstance: null,
       // Bulk import
       bulkLoading: false,
@@ -366,6 +415,30 @@ window.CronogramaView = {
   },
 
   methods: {
+    toggleMonth(month) {
+      this.selectedMonth = this.selectedMonth === month ? null : month;
+    },
+
+    monthDrilldown(month) {
+      const cm = this.currentMonth;
+      return this.selectedProjects.map(p => {
+        const entry = (p.schedule || []).find(r => r.month === month);
+        const hasEntry = !!entry;
+        const lb      = entry ? (entry.lb !== undefined && entry.lb !== '' ? numberInput(entry.lb) : numberInput(entry.planned)) : null;
+        const planned = entry ? numberInput(entry.planned) : null;
+        const hasActual = entry && entry.actual !== null && entry.actual !== undefined && entry.actual !== '' && month <= cm;
+        const actual  = hasActual ? numberInput(entry.actual) : null;
+        const dev     = planned !== null && actual !== null ? actual - planned : null;
+        return { id: p.id, name: p.name, responsible: p.responsible, lb, planned, actual, dev, hasEntry };
+      }).filter(r => r.hasEntry).sort((a, b) => {
+        // projetos com desvio maior atraso primeiro
+        if (a.dev !== null && b.dev !== null) return a.dev - b.dev;
+        if (a.dev !== null) return -1;
+        if (b.dev !== null) return 1;
+        return a.name.localeCompare(b.name, 'pt-BR');
+      });
+    },
+
     toggleProject(id) {
       const idx = this.selectedIds.indexOf(id);
       if (idx >= 0) this.selectedIds.splice(idx, 1);

@@ -461,16 +461,14 @@ window.DashboardView = {
   methods: {
     rowTrend(row) {
       if (!row) return 0;
-      const items = row.trend_items;
-      if (Array.isArray(items) && items.length > 0)
-        return items.reduce((s, i) => s + numberInput(i.value), 0);
-      return numberInput(row.baseline);
+      if (row.trend_items && row.trend_items.length > 0)
+        return row.trend_items.reduce((s, i) => s + numberInput(i.value), 0);
+      return numberInput(row.trend || row.baseline || 0);
     },
     rowActual(row) {
       if (!row) return 0;
-      const items = row.actual_items;
-      if (Array.isArray(items) && items.length > 0)
-        return items.reduce((s, i) => s + numberInput(i.value), 0);
+      if (row.trend_items && row.trend_items.length > 0)
+        return row.trend_items.reduce((s, i) => s + numberInput(i.actual), 0);
       return numberInput(row.actual || 0);
     },
     fc(v) { return formatCurrency(v); },

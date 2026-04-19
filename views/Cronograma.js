@@ -226,9 +226,9 @@ window.CronogramaView = {
       <!-- Importação em massa -->
       <div class="section" style="margin-bottom:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <div class="section-title" style="margin-bottom:0">Importar Cronogramas (.mpp)</div>
-          <button class="btn btn-secondary" @click="triggerBulkImport">📂 Selecionar arquivos .mpp</button>
-          <input type="file" ref="bulkFileInput" accept=".mpp" multiple style="display:none" @change="onBulkFilesChange">
+          <div class="section-title" style="margin-bottom:0">Importar Cronogramas (.xml — MS Project)</div>
+          <button class="btn btn-secondary" @click="triggerBulkImport">📂 Selecionar arquivos XML</button>
+          <input type="file" ref="bulkFileInput" accept=".xml" multiple style="display:none" @change="onBulkFilesChange">
         </div>
 
         <!-- Loading -->
@@ -286,11 +286,11 @@ window.CronogramaView = {
         <div v-if="!bulkLoading && bulkResults.length === 0" class="card"
           style="border:2px dashed var(--border);text-align:center;padding:32px;color:var(--text-muted)">
           <div style="font-size:28px;margin-bottom:10px">📂</div>
-          <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:var(--text)">Selecione os arquivos .mpp de todos os projetos</div>
-          <div style="font-size:13px;max-width:480px;margin:0 auto;line-height:1.6">
-            O sistema vincula cada arquivo ao projeto pelo <strong>nome do arquivo</strong> ou <strong>código PEP</strong>,
-            calcula a curva S de cada um e salva automaticamente.
-            Requisito: baseline salvo no .mpp (<em>Projeto → Definir Linha de Base</em>).
+          <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:var(--text)">Selecione os XMLs exportados do MS Project</div>
+          <div style="font-size:13px;max-width:500px;margin:0 auto;line-height:1.6">
+            Exporte cada cronograma: <strong>MS Project → Arquivo → Salvar como → Formato XML (*.xml)</strong>.
+            O sistema vincula pelo nome do arquivo ou código PEP, calcula a curva S e salva automaticamente.
+            Requisito: baseline salvo antes de exportar (<em>Projeto → Definir Linha de Base</em>).
           </div>
         </div>
       </div>
@@ -468,38 +468,8 @@ window.CronogramaView = {
       return 'Grande Atraso';
     },
 
-    // ── Bulk MPP import ───────────────────────────────────────────────────────
+    // ── Bulk XML import ───────────────────────────────────────────────────────
     triggerBulkImport() { this.$refs.bulkFileInput.click(); },
-
-    loadScript(src) {
-      return new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = src; s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
-    },
-
-    async loadMPXJ() {
-      if (window._mpxjLoaded) return true;
-      const cdns = [
-        'https://cdn.jsdelivr.net/npm/mpxj/dist/mpxj.umd.min.js',
-        'https://unpkg.com/mpxj/dist/mpxj.umd.js',
-        'https://cdn.jsdelivr.net/npm/mpxj/dist/mpxj.umd.js',
-      ];
-      for (const url of cdns) {
-        try { await this.loadScript(url); window._mpxjLoaded = true; return true; } catch (_) {}
-      }
-      return false;
-    },
-
-    getMPXJReader() {
-      const ns = window.mpxj || window.MPXJ || {};
-      return (
-        window.MPXJReader || window.ProjectReader || window.UniversalProjectReader ||
-        ns.MPXJReader || ns.ProjectReader || ns.UniversalProjectReader ||
-        (ns.default && (ns.default.MPXJReader || ns.default.ProjectReader))
-      );
-    },
 
     normalize(s) {
       return String(s || '').toLowerCase()
@@ -535,58 +505,78 @@ window.CronogramaView = {
       return best;
     },
 
-    async parseMPP(arrayBuffer) {
-      const ReaderClass = this.getMPXJReader();
-      if (!ReaderClass) throw new Error('Biblioteca MPXJ não encontrada');
-      const reader  = new ReaderClass();
-      const project = typeof reader.readAsync === 'function'
-        ? await reader.readAsync(arrayBuffer)
-        : await reader.read(arrayBuffer);
-      const allTasks = typeof project.getAllTasks === 'function'
-        ? project.getAllTasks() : (project.tasks || []);
-      const safe = fn => { try { return fn(); } catch { return null; } };
-      const leaf = allTasks.filter(t =>
-        !safe(() => t.getSummary()) && !safe(() => t.getMilestone()) &&
-        safe(() => t.getBaselineStart()) && safe(() => t.getBaselineFinish())
-      );
-      if (leaf.length === 0) throw new Error(`Sem tarefas com baseline (${allTasks.length} tarefas no arquivo)`);
-      return this.buildMPPCurves(leaf);
+    parseMSPDIXml(xmlText) {
+      const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+      if (doc.querySelector('parsererror')) throw new Error('XML inválido. Verifique se o arquivo foi exportado corretamente pelo MS Project.');
+
+      // Suporte a namespace ou sem namespace
+      const ns = 'http://schemas.microsoft.com/project';
+      const byTag = (parent, tag) => {
+        let els = parent.getElementsByTagNameNS(ns, tag);
+        if (!els.length) els = parent.getElementsByTagName(tag);
+        return els;
+      };
+      const getText = (el, tag) => {
+        const found = byTag(el, tag)[0];
+        return found ? found.textContent.trim() : null;
+      };
+      const getDate = (el, tag) => {
+        const v = getText(el, tag);
+        if (!v || v === 'NA' || v.startsWith('0001-') || v.startsWith('1969-')) return null;
+        const d = new Date(v);
+        return isNaN(d) ? null : d;
+      };
+      const parseDur = str => {
+        if (!str || str === 'PT0H0M0S') return 0;
+        // ISO 8601: P5DT0H0M0S / PT40H0M0S
+        const m = str.match(/P(?:(\d+(?:\.\d+)?)D)?T?(?:(\d+(?:\.\d+)?)H)?/);
+        if (!m) return 0;
+        return parseFloat(m[1] || 0) + parseFloat(m[2] || 0) / 8;
+      };
+
+      const taskEls = byTag(doc, 'Task');
+      if (!taskEls.length) throw new Error('Nenhuma tarefa encontrada. Confirme que exportou como XML do MS Project (Arquivo → Salvar como → Formato XML).');
+
+      const tasks = [];
+      for (const el of taskEls) {
+        if (getText(el, 'Summary') === '1') continue;
+        if (getText(el, 'Milestone') === '1') continue;
+        const bStart = getDate(el, 'BaselineStart');
+        const bFinish = getDate(el, 'BaselineFinish');
+        if (!bStart || !bFinish) continue;
+
+        tasks.push({
+          baselineStart:        bStart,
+          baselineFinish:       bFinish,
+          baselineDurationDays: parseDur(getText(el, 'BaselineDuration')),
+          start:                getDate(el, 'Start'),
+          finish:               getDate(el, 'Finish'),
+          durationDays:         parseDur(getText(el, 'Duration')),
+          actualStart:          getDate(el, 'ActualStart'),
+          actualFinish:         getDate(el, 'ActualFinish'),
+          percentComplete:      parseFloat(getText(el, 'PercentComplete') || '0'),
+        });
+      }
+      if (tasks.length === 0) throw new Error('Nenhuma tarefa folha com baseline encontrada. Salve o baseline antes de exportar (MS Project → Projeto → Definir Linha de Base).');
+      return tasks;
     },
 
     buildMPPCurves(tasks) {
-      const toDate = d => d instanceof Date ? d : new Date(d);
-      const toYM   = d => { const dt = toDate(d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`; };
+      // tasks: array de { baselineStart, baselineFinish, baselineDurationDays,
+      //                   start, finish, durationDays,
+      //                   actualStart, actualFinish, percentComplete }
+      const toYM = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
       const endOfMonth = ym => { const [y,m] = ym.split('-').map(Number); return new Date(y, m, 0, 23, 59, 59); };
+      const spanDays = (s, f) => Math.max(1, (f - s) / 86400000);
 
-      const durDays = dur => {
-        if (!dur) return 0;
-        const val  = typeof dur.getDuration === 'function' ? dur.getDuration() : 0;
-        const unit = typeof dur.getUnits    === 'function' ? String(dur.getUnits()) : '';
-        if (unit.includes('HOUR') || unit.includes('HORA')) return val / 8;
-        if (unit.includes('WEEK') || unit.includes('SEM'))  return val * 5;
-        return val;
-      };
-      const spanDays = (s, f) => Math.max(1, (toDate(f) - toDate(s)) / 86400000);
+      const lbWork  = t => t.baselineDurationDays > 0 ? t.baselineDurationDays : spanDays(t.baselineStart, t.baselineFinish);
+      const curWork = t => (t.start && t.finish) ? (t.durationDays > 0 ? t.durationDays : spanDays(t.start, t.finish)) : lbWork(t);
 
-      // Peso de cada tarefa = duração baseline em dias
-      const lbWork = t => {
-        const d = durDays(t.getBaselineDuration && t.getBaselineDuration());
-        return d > 0 ? d : spanDays(t.getBaselineStart(), t.getBaselineFinish());
-      };
-      // Peso pelo cronograma atual (reprogramado)
-      const curWork = t => {
-        const s = t.getStart && t.getStart(), f = t.getFinish && t.getFinish();
-        if (!s || !f) return lbWork(t);
-        const d = durDays(t.getDuration && t.getDuration());
-        return d > 0 ? d : spanDays(s, f);
-      };
-
-      const overlap = (start, finish, work, endDate) => {
-        const s = toDate(start), f = toDate(finish);
-        if (s > endDate) return 0;
-        if (f <= endDate) return work;
+      const overlap = (s, f, work, eom) => {
+        if (s > eom) return 0;
+        if (f <= eom) return work;
         const span = f - s; if (span === 0) return work;
-        return work * ((endDate - s) / span);
+        return work * ((eom - s) / span);
       };
 
       const totalLB  = tasks.reduce((s, t) => s + lbWork(t), 0);
@@ -594,49 +584,40 @@ window.CronogramaView = {
       if (totalLB === 0) return [];
 
       const monthSet = new Set();
+      const addRange = (s, f) => {
+        let d = new Date(s.getFullYear(), s.getMonth(), 1);
+        while (d <= f) { monthSet.add(toYM(d)); d.setMonth(d.getMonth() + 1); }
+      };
       tasks.forEach(t => {
-        const addRange = (s, f) => {
-          let d = new Date(toDate(s).getFullYear(), toDate(s).getMonth(), 1);
-          while (d <= toDate(f)) { monthSet.add(toYM(d)); d.setMonth(d.getMonth() + 1); }
-        };
-        addRange(t.getBaselineStart(), t.getBaselineFinish());
-        const cs = t.getStart && t.getStart(), cf = t.getFinish && t.getFinish();
-        if (cs && cf) addRange(cs, cf);
-        const as = t.getActualStart && t.getActualStart(), af = t.getActualFinish && t.getActualFinish();
-        if (as) monthSet.add(toYM(toDate(as)));
-        if (af) monthSet.add(toYM(toDate(af)));
+        addRange(t.baselineStart, t.baselineFinish);
+        if (t.start && t.finish) addRange(t.start, t.finish);
+        if (t.actualStart) monthSet.add(toYM(t.actualStart));
+        if (t.actualFinish) monthSet.add(toYM(t.actualFinish));
       });
 
-      const today = new Date();
-      const nowYM = toYM(today);
+      const today = new Date(), nowYM = toYM(today);
 
       return [...monthSet].sort().map(ym => {
         const eom = endOfMonth(ym);
 
-        // LB: curva do baseline original
         let cumLB = 0;
-        tasks.forEach(t => { cumLB += overlap(t.getBaselineStart(), t.getBaselineFinish(), lbWork(t), eom); });
+        tasks.forEach(t => { cumLB += overlap(t.baselineStart, t.baselineFinish, lbWork(t), eom); });
         const lb = parseFloat(Math.min(100, (cumLB / totalLB) * 100).toFixed(1));
 
-        // Previsto: curva do cronograma atual (reprogramado)
         let cumCur = 0;
         tasks.forEach(t => {
-          const cs = t.getStart && t.getStart(), cf = t.getFinish && t.getFinish();
-          if (cs && cf) cumCur += overlap(cs, cf, curWork(t), eom);
-          else cumCur += overlap(t.getBaselineStart(), t.getBaselineFinish(), lbWork(t), eom);
+          if (t.start && t.finish) cumCur += overlap(t.start, t.finish, curWork(t), eom);
+          else cumCur += overlap(t.baselineStart, t.baselineFinish, lbWork(t), eom);
         });
         const planned = parseFloat(Math.min(100, (cumCur / totalCur) * 100).toFixed(1));
 
-        // Realizado
         let actual = null;
         if (ym <= nowYM) {
           let cumActual = 0;
           tasks.forEach(t => {
-            const as = t.getActualStart && t.getActualStart();
-            if (!as) return;
-            const af  = t.getActualFinish && t.getActualFinish();
-            const pct = (t.getPercentageComplete ? t.getPercentageComplete() : 0) / 100;
-            cumActual += overlap(as, af || today, pct * lbWork(t), eom);
+            if (!t.actualStart) return;
+            const af = t.actualFinish || today;
+            cumActual += overlap(t.actualStart, af, (t.percentComplete / 100) * lbWork(t), eom);
           });
           actual = parseFloat(Math.min(100, (cumActual / totalLB) * 100).toFixed(1));
         }
@@ -654,13 +635,6 @@ window.CronogramaView = {
       this.bulkDone = 0;
       this.bulkTotal = files.length;
 
-      const ok = await this.loadMPXJ();
-      if (!ok) {
-        this.bulkLoading = false;
-        this.bulkResults = [{ filename: '(todos)', ok: false, error: 'Não foi possível carregar a biblioteca MPXJ. Verifique a conexão.' }];
-        return;
-      }
-
       for (const file of files) {
         this.bulkCurrentFile = file.name;
         const result = { filename: file.name, ok: false, projectName: null, months: null, error: null, matched: false, projectId: null };
@@ -669,18 +643,19 @@ window.CronogramaView = {
           const project = this.matchFileToProject(file.name);
           if (!project) {
             result.error = 'Projeto não encontrado — vincule manualmente';
-            result._fileData = file; // guarda para re-importar
+            result._fileData = file;
           } else {
-            result.matched = true;
+            result.matched    = true;
             result.projectId  = project.id;
             result.projectName = project.name;
 
-            const buf    = await file.arrayBuffer();
-            const curves = await this.parseMPP(buf);
+            const text   = await file.text();
+            const tasks  = this.parseMSPDIXml(text);
+            const curves = this.buildMPPCurves(tasks);
 
             const existing = [...(project.schedule || [])];
             curves.forEach(r => {
-              const idx = existing.findIndex(e => e.month === r.month);
+              const idx = existing.findIndex(ex => ex.month === r.month);
               if (idx >= 0) existing[idx] = r; else existing.push(r);
             });
             Store.updateProject(project.id, { ...project, schedule: existing });
@@ -709,11 +684,12 @@ window.CronogramaView = {
       resultRow.ok = false;
       resultRow.error = null;
       try {
-        const buf    = await resultRow._fileData.arrayBuffer();
-        const curves = await this.parseMPP(buf);
+        const text   = await resultRow._fileData.text();
+        const tasks  = this.parseMSPDIXml(text);
+        const curves = this.buildMPPCurves(tasks);
         const existing = [...(project.schedule || [])];
         curves.forEach(r => {
-          const idx = existing.findIndex(e => e.month === r.month);
+          const idx = existing.findIndex(ex => ex.month === r.month);
           if (idx >= 0) existing[idx] = r; else existing.push(r);
         });
         Store.updateProject(project.id, { ...project, schedule: existing });

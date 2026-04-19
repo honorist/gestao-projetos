@@ -166,23 +166,74 @@ window.CronogramaView = {
         </div>
       </div>
 
-      <!-- Instrução de importação -->
+      <!-- Importação em massa -->
       <div class="section" style="margin-bottom:20px">
-        <div class="section-title">Como importar cronogramas</div>
-        <div class="card" style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
-          <div style="flex:1;min-width:220px">
-            <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text)">📂 Por projeto (aba Cronograma)</div>
-            <div style="font-size:13px;color:var(--text-muted);line-height:1.6">
-              Abra cada projeto → aba <strong>📅 Cronograma</strong> → botão <strong>Importar .mpp</strong>.
-              O sistema lê o baseline e o avanço real e calcula a curva S mensalmente.
-            </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="section-title" style="margin-bottom:0">Importar Cronogramas (.mpp)</div>
+          <button class="btn btn-secondary" @click="triggerBulkImport">📂 Selecionar arquivos .mpp</button>
+          <input type="file" ref="bulkFileInput" accept=".mpp" multiple style="display:none" @change="onBulkFilesChange">
+        </div>
+
+        <!-- Loading -->
+        <div v-if="bulkLoading" class="card" style="display:flex;align-items:center;gap:12px;padding:16px">
+          <div style="width:20px;height:20px;border:3px solid #C8E6C9;border-top-color:#1D6B3F;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></div>
+          <div>
+            <div style="font-weight:600;font-size:13px">Processando {{ bulkDone }}/{{ bulkTotal }} arquivos…</div>
+            <div style="font-size:12px;color:var(--text-muted)">{{ bulkCurrentFile }}</div>
           </div>
-          <div style="border-left:1px solid var(--border);padding-left:24px;flex:1;min-width:220px">
-            <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text)">✅ Requisito no arquivo .mpp</div>
-            <div style="font-size:13px;color:var(--text-muted);line-height:1.6">
-              O arquivo precisa ter o <strong>baseline salvo</strong>: <em>Projeto → Definir Linha de Base → OK</em>.
-              Sem baseline não há curva de previsto.
+        </div>
+
+        <!-- Resultado após importação -->
+        <div v-if="!bulkLoading && bulkResults.length > 0" class="table-wrap">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:13px;color:var(--text-muted)">
+              <strong style="color:var(--green)">{{ bulkResults.filter(r=>r.ok).length }} importados</strong>
+              <span v-if="bulkResults.filter(r=>!r.ok).length > 0">
+                · <strong style="color:var(--danger)">{{ bulkResults.filter(r=>!r.ok).length }} com erro</strong>
+              </span>
             </div>
+            <button class="btn btn-ghost btn-sm" @click="bulkResults = []">✕ Limpar</button>
+          </div>
+          <table class="table" style="font-size:13px">
+            <thead>
+              <tr>
+                <th>Arquivo .mpp</th>
+                <th>Projeto vinculado</th>
+                <th style="text-align:center">Meses</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in bulkResults" :key="r.filename">
+                <td style="font-family:monospace;font-size:12px">{{ r.filename }}</td>
+                <td>
+                  <select v-if="!r.ok && !r.matched" class="form-control" style="font-size:12px;padding:3px 8px"
+                    @change="e => reImportWithProject(r, e.target.value)">
+                    <option value="">— vincular manualmente —</option>
+                    <option v-for="p in allProjects" :key="p.id" :value="p.id">{{ p.name }}</option>
+                  </select>
+                  <span v-else style="font-weight:600">{{ r.projectName || '—' }}</span>
+                </td>
+                <td style="text-align:center">{{ r.months || '—' }}</td>
+                <td>
+                  <span v-if="r.ok" class="badge badge-green">OK</span>
+                  <span v-else class="badge badge-red" :title="r.error">Erro</span>
+                  <span v-if="r.error" style="font-size:11px;color:var(--danger);margin-left:6px">{{ r.error }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Instrução inicial -->
+        <div v-if="!bulkLoading && bulkResults.length === 0" class="card"
+          style="border:2px dashed var(--border);text-align:center;padding:32px;color:var(--text-muted)">
+          <div style="font-size:28px;margin-bottom:10px">📂</div>
+          <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:var(--text)">Selecione os arquivos .mpp de todos os projetos</div>
+          <div style="font-size:13px;max-width:480px;margin:0 auto;line-height:1.6">
+            O sistema vincula cada arquivo ao projeto pelo <strong>nome do arquivo</strong> ou <strong>código PEP</strong>,
+            calcula a curva S de cada um e salva automaticamente.
+            Requisito: baseline salvo no .mpp (<em>Projeto → Definir Linha de Base</em>).
           </div>
         </div>
       </div>
@@ -196,6 +247,12 @@ window.CronogramaView = {
       filterLeader: '',
       selectedIds: [],
       chartInstance: null,
+      // Bulk import
+      bulkLoading: false,
+      bulkDone: 0,
+      bulkTotal: 0,
+      bulkCurrentFile: '',
+      bulkResults: [],
     };
   },
 
@@ -322,6 +379,239 @@ window.CronogramaView = {
       if (Math.abs(dev) <= 5) return 'No alvo';
       if (dev < -5)           return 'Atrasado';
       return 'Adiantado';
+    },
+
+    // ── Bulk MPP import ───────────────────────────────────────────────────────
+    triggerBulkImport() { this.$refs.bulkFileInput.click(); },
+
+    loadScript(src) {
+      return new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = src; s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    },
+
+    async loadMPXJ() {
+      if (window._mpxjLoaded) return true;
+      const cdns = [
+        'https://cdn.jsdelivr.net/npm/mpxj/dist/mpxj.umd.min.js',
+        'https://unpkg.com/mpxj/dist/mpxj.umd.js',
+        'https://cdn.jsdelivr.net/npm/mpxj/dist/mpxj.umd.js',
+      ];
+      for (const url of cdns) {
+        try { await this.loadScript(url); window._mpxjLoaded = true; return true; } catch (_) {}
+      }
+      return false;
+    },
+
+    getMPXJReader() {
+      const ns = window.mpxj || window.MPXJ || {};
+      return (
+        window.MPXJReader || window.ProjectReader || window.UniversalProjectReader ||
+        ns.MPXJReader || ns.ProjectReader || ns.UniversalProjectReader ||
+        (ns.default && (ns.default.MPXJReader || ns.default.ProjectReader))
+      );
+    },
+
+    normalize(s) {
+      return String(s || '').toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // remove acentos
+        .replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    },
+
+    matchFileToProject(filename) {
+      const fn = this.normalize(filename.replace(/\.mpp$/i, ''));
+      const projects = Store.state.projects.filter(p => p.status !== 'cancelled');
+
+      // 1. PEP exato dentro do filename
+      for (const p of projects) {
+        if (p.pep && fn.includes(this.normalize(p.pep))) return p;
+      }
+      // 2. Nome do projeto contido no filename (ou vice-versa)
+      for (const p of projects) {
+        const pn = this.normalize(p.name);
+        if (fn.includes(pn) || pn.includes(fn)) return p;
+      }
+      // 3. Número do projeto
+      for (const p of projects) {
+        if (p.number && fn.includes(this.normalize(p.number))) return p;
+      }
+      // 4. Palavras significativas em comum (>= 2 palavras com 4+ letras)
+      const fnWords = fn.split(' ').filter(w => w.length >= 4);
+      let best = null, bestScore = 0;
+      for (const p of projects) {
+        const pnWords = this.normalize(p.name).split(' ').filter(w => w.length >= 4);
+        const matches = fnWords.filter(w => pnWords.includes(w)).length;
+        if (matches >= 2 && matches > bestScore) { bestScore = matches; best = p; }
+      }
+      return best;
+    },
+
+    async parseMPP(arrayBuffer) {
+      const ReaderClass = this.getMPXJReader();
+      if (!ReaderClass) throw new Error('Biblioteca MPXJ não encontrada');
+      const reader  = new ReaderClass();
+      const project = typeof reader.readAsync === 'function'
+        ? await reader.readAsync(arrayBuffer)
+        : await reader.read(arrayBuffer);
+      const allTasks = typeof project.getAllTasks === 'function'
+        ? project.getAllTasks() : (project.tasks || []);
+      const safe = fn => { try { return fn(); } catch { return null; } };
+      const leaf = allTasks.filter(t =>
+        !safe(() => t.getSummary()) && !safe(() => t.getMilestone()) &&
+        safe(() => t.getBaselineStart()) && safe(() => t.getBaselineFinish())
+      );
+      if (leaf.length === 0) throw new Error(`Sem tarefas com baseline (${allTasks.length} tarefas no arquivo)`);
+      return this.buildMPPCurves(leaf);
+    },
+
+    buildMPPCurves(tasks) {
+      const toDate = d => d instanceof Date ? d : new Date(d);
+      const toYM   = d => { const dt = toDate(d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`; };
+      const endOfMonth = ym => { const [y,m] = ym.split('-').map(Number); return new Date(y, m, 0, 23, 59, 59); };
+      const taskWork = t => {
+        const dur = t.getBaselineDuration && t.getBaselineDuration();
+        if (dur) {
+          const val  = typeof dur.getDuration === 'function' ? dur.getDuration() : 0;
+          const unit = typeof dur.getUnits    === 'function' ? String(dur.getUnits()) : '';
+          if (unit.includes('HOUR') || unit.includes('HORA')) return val / 8;
+          if (unit.includes('WEEK') || unit.includes('SEM'))  return val * 5;
+          return val;
+        }
+        const bs = toDate(t.getBaselineStart()), bf = toDate(t.getBaselineFinish());
+        return Math.max(1, (bf - bs) / 86400000);
+      };
+      const overlap = (start, finish, work, endDate) => {
+        const s = toDate(start), f = toDate(finish);
+        if (s > endDate) return 0;
+        if (f <= endDate) return work;
+        const span = f - s; if (span === 0) return work;
+        return work * ((endDate - s) / span);
+      };
+
+      const totalWork = tasks.reduce((s, t) => s + taskWork(t), 0);
+      if (totalWork === 0) return [];
+
+      const monthSet = new Set();
+      tasks.forEach(t => {
+        let d = new Date(toDate(t.getBaselineStart()).getFullYear(), toDate(t.getBaselineStart()).getMonth(), 1);
+        const bf = toDate(t.getBaselineFinish());
+        while (d <= bf) { monthSet.add(toYM(d)); d.setMonth(d.getMonth() + 1); }
+        const as = t.getActualStart && t.getActualStart();
+        const af = t.getActualFinish && t.getActualFinish();
+        if (as) monthSet.add(toYM(toDate(as)));
+        if (af) monthSet.add(toYM(toDate(af)));
+      });
+
+      const today = new Date();
+      const nowYM = toYM(today);
+
+      return [...monthSet].sort().map(ym => {
+        const eom = endOfMonth(ym);
+        let cumPlanned = 0;
+        tasks.forEach(t => { cumPlanned += overlap(t.getBaselineStart(), t.getBaselineFinish(), taskWork(t), eom); });
+        const planned = parseFloat(Math.min(100, (cumPlanned / totalWork) * 100).toFixed(1));
+
+        let actual = null;
+        if (ym <= nowYM) {
+          let cumActual = 0;
+          tasks.forEach(t => {
+            const as = t.getActualStart && t.getActualStart();
+            if (!as) return;
+            const af   = t.getActualFinish && t.getActualFinish();
+            const pct  = (t.getPercentageComplete ? t.getPercentageComplete() : 0) / 100;
+            const done = pct * taskWork(t);
+            cumActual += overlap(as, af || today, done, eom);
+          });
+          actual = parseFloat(Math.min(100, (cumActual / totalWork) * 100).toFixed(1));
+        }
+        return { month: ym, planned, actual };
+      });
+    },
+
+    async onBulkFilesChange(e) {
+      const files = [...e.target.files];
+      e.target.value = '';
+      if (!files.length) return;
+
+      this.bulkResults = [];
+      this.bulkLoading = true;
+      this.bulkDone = 0;
+      this.bulkTotal = files.length;
+
+      const ok = await this.loadMPXJ();
+      if (!ok) {
+        this.bulkLoading = false;
+        this.bulkResults = [{ filename: '(todos)', ok: false, error: 'Não foi possível carregar a biblioteca MPXJ. Verifique a conexão.' }];
+        return;
+      }
+
+      for (const file of files) {
+        this.bulkCurrentFile = file.name;
+        const result = { filename: file.name, ok: false, projectName: null, months: null, error: null, matched: false, projectId: null };
+
+        try {
+          const project = this.matchFileToProject(file.name);
+          if (!project) {
+            result.error = 'Projeto não encontrado — vincule manualmente';
+            result._fileData = file; // guarda para re-importar
+          } else {
+            result.matched = true;
+            result.projectId  = project.id;
+            result.projectName = project.name;
+
+            const buf    = await file.arrayBuffer();
+            const curves = await this.parseMPP(buf);
+
+            const existing = [...(project.schedule || [])];
+            curves.forEach(r => {
+              const idx = existing.findIndex(e => e.month === r.month);
+              if (idx >= 0) existing[idx] = r; else existing.push(r);
+            });
+            Store.updateProject(project.id, { ...project, schedule: existing });
+
+            result.ok     = true;
+            result.months = curves.length;
+          }
+        } catch (err) {
+          result.error = err.message;
+        }
+
+        this.bulkResults.push(result);
+        this.bulkDone++;
+      }
+
+      this.bulkLoading = false;
+      this.bulkCurrentFile = '';
+      this.$nextTick(() => this.renderChart());
+    },
+
+    async reImportWithProject(resultRow, projectId) {
+      if (!projectId || !resultRow._fileData) return;
+      const project = Store.state.projects.find(p => p.id === projectId);
+      if (!project) return;
+
+      resultRow.ok = false;
+      resultRow.error = null;
+      try {
+        const buf    = await resultRow._fileData.arrayBuffer();
+        const curves = await this.parseMPP(buf);
+        const existing = [...(project.schedule || [])];
+        curves.forEach(r => {
+          const idx = existing.findIndex(e => e.month === r.month);
+          if (idx >= 0) existing[idx] = r; else existing.push(r);
+        });
+        Store.updateProject(project.id, { ...project, schedule: existing });
+        resultRow.ok          = true;
+        resultRow.matched     = true;
+        resultRow.projectId   = project.id;
+        resultRow.projectName = project.name;
+        resultRow.months      = curves.length;
+        this.$nextTick(() => this.renderChart());
+      } catch (err) {
+        resultRow.error = err.message;
+      }
     },
 
     renderChart() {

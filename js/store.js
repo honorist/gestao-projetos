@@ -194,6 +194,7 @@
         unit: d.unit || '',
         location: d.location || '',
         status: d.status || 'planning', fel_phase: d.fel_phase || 'FEL1',
+        project_type: d.project_type || 'other',
         responsible: d.responsible || '',
         manager_requestor: d.manager_requestor || '',
         maintenance: d.maintenance || '',

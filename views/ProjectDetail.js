@@ -41,12 +41,15 @@ window.ProjectDetailView = {
             <div class="form-group"><label class="form-label">Local</label><input class="form-control" v-model="form.location"></div>
             <div class="form-group"><label class="form-label">Orçamento ($)</label><input class="form-control" type="number" v-model="form.budget"></div>
           </div>
-          <div class="form-row-3">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px">
             <div class="form-group">
               <label class="form-label">Status</label>
               <select class="form-control" v-model="form.status">
-                <option value="planning">Planejamento</option><option value="active">Ativo</option>
-                <option value="on_hold">Pausado</option><option value="completed">Concluído</option>
+                <option value="planning">Planejamento</option>
+                <option value="active">Ativo</option>
+                <option value="closing">Encerramento</option>
+                <option value="on_hold">Pausado</option>
+                <option value="completed">Concluído</option>
                 <option value="cancelled">Cancelado</option>
               </select>
             </div>
@@ -59,6 +62,15 @@ window.ProjectDetailView = {
               </select>
             </div>
             <div class="form-group"><label class="form-label">% Concluído</label><input class="form-control" type="number" min="0" max="100" v-model="form.progress_pct"></div>
+            <div class="form-group">
+              <label class="form-label">Tipo de Projeto</label>
+              <select class="form-control" v-model="form.project_type">
+                <option value="safety">Segurança</option>
+                <option value="environment">Meio Ambiente</option>
+                <option value="efficiency">Eficiência</option>
+                <option value="other">Outros</option>
+              </select>
+            </div>
           </div>
           <div class="form-row-3">
             <div class="form-group"><label class="form-label">Início</label><input class="form-control" type="date" v-model="form.start_date"></div>

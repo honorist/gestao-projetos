@@ -25,7 +25,7 @@ function formatMonth(monthStr) {
 
 const STATUS_LABELS = {
   planning: 'Planejamento', active: 'Ativo', on_hold: 'Pausado',
-  completed: 'Concluído', cancelled: 'Cancelado',
+  closing: 'Encerramento', completed: 'Concluído', cancelled: 'Cancelado',
   FEL1: 'FEL 1', FEL2: 'FEL 2', FEL3: 'FEL 3',
   execution: 'Execução', closeout: 'Encerramento',
   forecast: 'Previsão', requisition: 'RC Aberta', quoting: 'Em Cotação',
@@ -36,7 +36,7 @@ const STATUS_LABELS = {
 };
 
 const STATUS_COLORS = {
-  planning: 'gray', active: 'green', on_hold: 'yellow', completed: 'blue', cancelled: 'red',
+  planning: 'gray', active: 'green', on_hold: 'yellow', closing: 'orange', completed: 'blue', cancelled: 'red',
   forecast: 'gray', requisition: 'blue', quoting: 'orange',
   approved: 'teal', po_issued: 'teal', in_transit: 'purple', received: 'green',
   todo: 'gray', in_progress: 'blue', blocked: 'red', done: 'green',

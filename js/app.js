@@ -5,6 +5,7 @@ const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: '/', component: window.DashboardView },
+    { path: '/financeiro', component: window.VisaoFinanceiraView },
     { path: '/projects', component: window.ProjectListView },
     { path: '/projects/:id', component: window.ProjectDetailView },
     { path: '/purchases', component: window.PurchaseListView },
@@ -45,7 +46,10 @@ const AppShell = {
         </div>
         <nav class="sidebar-nav">
           <a href="#/" class="nav-item" :class="{ active: navActive('/') && currentPath === '/' }">
-            <span class="nav-icon">📊</span> Dashboard
+            <span class="nav-icon">📊</span> Gestão Carteira
+          </a>
+          <a href="#/financeiro" class="nav-item" :class="{ active: navActive('/financeiro') }">
+            <span class="nav-icon">💰</span> Visão Financeira
           </a>
           <a href="#/portfolio" class="nav-item" :class="{ active: navActive('/portfolio') }">
             <span class="nav-icon">📈</span> Portfólio

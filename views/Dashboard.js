@@ -9,6 +9,25 @@ window.DashboardView = {
         <button class="btn btn-primary" @click="$router.push({ path: '/projects', query: { new: '1' } })">+ Novo Projeto</button>
       </div>
 
+      <!-- Destaque Anual -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="background:var(--green);border-radius:8px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Desembolso Previsto {{ currentYear }}</div>
+            <div style="font-size:28px;font-weight:700;color:#fff">{{ fc(kpiAnual.previsto) }}</div>
+          </div>
+          <div style="font-size:36px;opacity:.4">📅</div>
+        </div>
+        <div style="background:var(--surface);border:2px solid var(--green);border-radius:8px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Realizado até {{ currentMonthLabel }}</div>
+            <div style="font-size:28px;font-weight:700;color:var(--green)">{{ fc(kpiAnual.realizado) }}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">{{ kpiAnual.pct.toFixed(1) }}% do previsto anual</div>
+          </div>
+          <div style="font-size:36px;opacity:.35">✅</div>
+        </div>
+      </div>
+
       <!-- KPI Strip -->
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px">
         <div v-for="k in kpiStrip" :key="k.label"
@@ -191,6 +210,22 @@ window.DashboardView = {
     },
     activeAndClosing() {
       return this.projects.filter(p => ['active', 'closing', 'on_hold'].includes(p.status));
+    },
+
+    currentYear() { return new Date().getFullYear(); },
+
+    // ── KPI Anual (destaque topo) ──────────────────────────────────────────────
+    kpiAnual() {
+      const year = String(this.currentYear);
+      let previsto = 0, realizado = 0;
+      this.projects.forEach(p => {
+        (p.disbursements || []).forEach(r => {
+          if (!r.month || !r.month.startsWith(year)) return;
+          previsto  += this.rowTrend(r);
+          if (r.month <= this.currentMonth) realizado += this.rowActual(r);
+        });
+      });
+      return { previsto, realizado, pct: previsto > 0 ? realizado / previsto * 100 : 0 };
     },
 
     // ── KPI Strip ──────────────────────────────────────────────────────────────

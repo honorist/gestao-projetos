@@ -226,9 +226,9 @@ window.CronogramaView = {
       <!-- Importação em massa -->
       <div class="section" style="margin-bottom:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <div class="section-title" style="margin-bottom:0">Importar Cronogramas (.xml — MS Project)</div>
-          <button class="btn btn-secondary" @click="triggerBulkImport">📂 Selecionar arquivos XML</button>
-          <input type="file" ref="bulkFileInput" accept=".xml" multiple style="display:none" @change="onBulkFilesChange">
+          <div class="section-title" style="margin-bottom:0">Importar Cronogramas (.mpp ou .xml)</div>
+          <button class="btn btn-secondary" @click="triggerBulkImport">📂 Selecionar arquivos .mpp / .xml</button>
+          <input type="file" ref="bulkFileInput" accept=".mpp,.xml" multiple style="display:none" @change="onBulkFilesChange">
         </div>
 
         <!-- Loading -->
@@ -286,11 +286,11 @@ window.CronogramaView = {
         <div v-if="!bulkLoading && bulkResults.length === 0" class="card"
           style="border:2px dashed var(--border);text-align:center;padding:32px;color:var(--text-muted)">
           <div style="font-size:28px;margin-bottom:10px">📂</div>
-          <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:var(--text)">Selecione os XMLs exportados do MS Project</div>
-          <div style="font-size:13px;max-width:500px;margin:0 auto;line-height:1.6">
-            Exporte cada cronograma: <strong>MS Project → Arquivo → Salvar como → Formato XML (*.xml)</strong>.
-            O sistema vincula pelo nome do arquivo ou código PEP, calcula a curva S e salva automaticamente.
-            Requisito: baseline salvo antes de exportar (<em>Projeto → Definir Linha de Base</em>).
+          <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:var(--text)">Selecione arquivos .mpp ou .xml</div>
+          <div style="font-size:13px;max-width:520px;margin:0 auto;line-height:1.8">
+            <strong>.mpp direto:</strong> execute <code style="background:var(--bg);padding:1px 6px;border-radius:4px;font-size:12px">npm run mpp</code> na pasta do projeto e mantenha aberto.<br>
+            <strong>.xml:</strong> MS Project → Arquivo → Salvar como → Formato XML (*.xml).<br>
+            <span style="color:var(--text-muted)">O sistema vincula pelo nome do arquivo ou PEP e salva automaticamente. Requisito: baseline salvo.</span>
           </div>
         </div>
       </div>
@@ -505,6 +505,23 @@ window.CronogramaView = {
       return best;
     },
 
+    async parseMPPviaServer(file) {
+      let res;
+      try {
+        res = await fetch('http://localhost:3456/parse', {
+          method: 'POST',
+          body: await file.arrayBuffer(),
+        });
+      } catch {
+        throw new Error(
+          'Servidor MPP não encontrado. Abra um terminal na pasta do projeto e execute:\n  npm run mpp\nMantenha a janela aberta e tente novamente.'
+        );
+      }
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data.curves;
+    },
+
     parseMSPDIXml(xmlText) {
       const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
       if (doc.querySelector('parsererror')) throw new Error('XML inválido. Verifique se o arquivo foi exportado corretamente pelo MS Project.');
@@ -649,9 +666,14 @@ window.CronogramaView = {
             result.projectId  = project.id;
             result.projectName = project.name;
 
-            const text   = await file.text();
-            const tasks  = this.parseMSPDIXml(text);
-            const curves = this.buildMPPCurves(tasks);
+            let curves;
+            if (file.name.toLowerCase().endsWith('.mpp')) {
+              curves = await this.parseMPPviaServer(file);
+            } else {
+              const text = await file.text();
+              const tasks = this.parseMSPDIXml(text);
+              curves = this.buildMPPCurves(tasks);
+            }
 
             const existing = [...(project.schedule || [])];
             curves.forEach(r => {
@@ -684,9 +706,14 @@ window.CronogramaView = {
       resultRow.ok = false;
       resultRow.error = null;
       try {
-        const text   = await resultRow._fileData.text();
-        const tasks  = this.parseMSPDIXml(text);
-        const curves = this.buildMPPCurves(tasks);
+        let curves;
+        if (resultRow._fileData.name.toLowerCase().endsWith('.mpp')) {
+          curves = await this.parseMPPviaServer(resultRow._fileData);
+        } else {
+          const text  = await resultRow._fileData.text();
+          const tasks = this.parseMSPDIXml(text);
+          curves = this.buildMPPCurves(tasks);
+        }
         const existing = [...(project.schedule || [])];
         curves.forEach(r => {
           const idx = existing.findIndex(ex => ex.month === r.month);

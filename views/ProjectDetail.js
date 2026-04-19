@@ -516,11 +516,11 @@ window.ProjectDetailView = {
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
             <div class="section-title" style="margin-bottom:0">Avanço Físico Mensal (%)</div>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-secondary btn-sm" @click="triggerSchedImport">📂 Importar XML</button>
+              <button class="btn btn-secondary btn-sm" @click="triggerSchedImport">📂 Importar .mpp / .xml</button>
               <button class="btn btn-secondary btn-sm" @click="addSchedRow">+ Adicionar Mês</button>
             </div>
           </div>
-          <input type="file" ref="schedFileInput" accept=".xml" style="display:none" @change="onSchedFileChange">
+          <input type="file" ref="schedFileInput" accept=".mpp,.xml" style="display:none" @change="onSchedFileChange">
 
           <div v-if="importSuccess" class="alert alert-info" style="margin-bottom:12px">{{ importSuccess }}</div>
           <div v-if="importLoading" class="alert alert-info" style="margin-bottom:12px;display:flex;align-items:center;gap:10px">
@@ -924,8 +924,25 @@ window.ProjectDetailView = {
     },
     deleteTask(id) { if (confirm('Excluir tarefa?')) Store.deleteTask(id); },
 
-    // ── Import XML (MS Project MSPDI) ─────────────────────────────────────────
+    // ── Import .mpp / .xml (MS Project) ──────────────────────────────────────
     triggerSchedImport() { this.$refs.schedFileInput.click(); },
+
+    async parseMPPviaServer(file) {
+      let res;
+      try {
+        res = await fetch('http://localhost:3456/parse', {
+          method: 'POST',
+          body: await file.arrayBuffer(),
+        });
+      } catch {
+        throw new Error(
+          'Servidor MPP não encontrado. Abra um terminal na pasta do projeto e execute:\n  npm run mpp\nMantenha a janela aberta e tente novamente.'
+        );
+      }
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data.curves;
+    },
 
     parseMSPDIXml(xmlText) {
       const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
@@ -975,9 +992,14 @@ window.ProjectDetailView = {
       this.importPanel = false; this.importRawRows = []; this.importHeaders = [];
       this.importLoading = true;
       try {
-        const text   = await file.text();
-        const tasks  = this.parseMSPDIXml(text);
-        const curves = this.buildMPPCurves(tasks);
+        let curves;
+        if (file.name.toLowerCase().endsWith('.mpp')) {
+          curves = await this.parseMPPviaServer(file);
+        } else {
+          const text  = await file.text();
+          const tasks = this.parseMSPDIXml(text);
+          curves = this.buildMPPCurves(tasks);
+        }
         this.importLoading = false;
         if (curves.length === 0) { this.importError = 'Curva S resultou em zero meses. Verifique as datas do cronograma.'; return; }
         this.importHeaders  = [{ key: 'month', label: 'Mês' }, { key: 'planned', label: 'Previsto (%)' }, { key: 'actual', label: 'Realizado (%)' }];

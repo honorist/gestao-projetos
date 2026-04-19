@@ -1,0 +1,12 @@
+{
+  "name": "cmpc-gestao-projetos",
+  "version": "1.0.0",
+  "description": "Servidor local para importação de arquivos .mpp (MS Project)",
+  "main": "mpp_server.js",
+  "scripts": {
+    "mpp": "node mpp_server.js"
+  },
+  "dependencies": {
+    "mpxj": "*"
+  }
+}

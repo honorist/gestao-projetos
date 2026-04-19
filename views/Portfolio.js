@@ -163,6 +163,7 @@ window.PortfolioView = {
                             <th>Projeto</th>
                             <th>Responsável</th>
                             <th style="text-align:right">Baseline</th>
+                            <th style="text-align:right">Previsto</th>
                             <th style="text-align:right">Realizado</th>
                             <th style="text-align:right">Aderência</th>
                             <th>Status</th>
@@ -180,6 +181,7 @@ window.PortfolioView = {
                               </td>
                               <td class="text-sm text-muted">{{ row.responsible || '—' }}</td>
                               <td class="text-right" style="color:var(--green)">{{ fc(row.baseline) }}</td>
+                              <td class="text-right" style="color:var(--warning)">{{ fc(row.trend) }}</td>
                               <td class="text-right" style="color:var(--info)">{{ fc(row.actual) }}</td>
                               <td class="text-right" style="font-weight:700" :style="row.pct !== null ? adherenceStyle(row.pct) : ''">
                                 {{ row.pct !== null ? row.pct.toFixed(1) + '%' : '—' }}
@@ -191,7 +193,7 @@ window.PortfolioView = {
                             </tr>
                             <!-- Drilldown nível 2: itens/compras do projeto no mês -->
                             <tr v-if="selectedProjectKey === row.id + '|' + m.month" style="background:rgba(25,118,210,.04)">
-                              <td colspan="6" style="padding:6px 16px 12px 32px">
+                              <td colspan="7" style="padding:6px 16px 12px 32px">
                                 <div v-if="row.items.length === 0" class="text-muted text-sm" style="padding:4px 0">
                                   Sem itens cadastrados para este mês.
                                 </div>
@@ -488,8 +490,9 @@ window.PortfolioView = {
         const row = (p.disbursements || []).find(r => r.month === month);
         if (!row) return null;
         const baseline = numberInput(row.baseline);
+        const trend    = this.rowTrend(row);
         const actual   = this.rowActual(row);
-        if (baseline === 0 && actual === 0) return null;
+        if (baseline === 0 && trend === 0 && actual === 0) return null;
         const pct = baseline > 0 ? (actual / baseline * 100) : null;
 
         // Resolve itens (trend_items) com nome da compra
@@ -514,7 +517,7 @@ window.PortfolioView = {
           items.push({ label: 'Valor do mês', trend: this.rowTrend(row), actual, purchaseId: null });
         }
 
-        return { id: p.id, name: p.name, responsible: p.responsible, baseline, actual, pct, items };
+        return { id: p.id, name: p.name, responsible: p.responsible, baseline, trend, actual, pct, items };
       }).filter(Boolean).sort((a, b) => {
         if (a.pct !== null && b.pct !== null) return a.pct - b.pct;
         if (a.pct !== null) return -1;

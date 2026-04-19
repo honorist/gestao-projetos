@@ -61,7 +61,7 @@ window.CronogramaView = {
       <!-- Cards de resumo -->
       <div v-if="selectedIds.length > 0" class="grid-3" style="margin-bottom:20px">
         <div class="fin-card" style="border-left:4px solid #1D6B3F">
-          <div class="fin-label">Avanço Previsto (mês atual)</div>
+          <div class="fin-label">LB — Linha de Base (mês atual)</div>
           <div class="fin-value" style="color:#1D6B3F">{{ summaryStats.planned !== null ? summaryStats.planned.toFixed(1) + '%' : '—' }}</div>
           <div class="card-sub">{{ selectedIds.length }} projeto(s) selecionado(s)</div>
         </div>
@@ -107,7 +107,7 @@ window.CronogramaView = {
             <thead>
               <tr>
                 <th>Mês</th>
-                <th style="text-align:right">Previsto (%)</th>
+                <th style="text-align:right">LB (%)</th>
                 <th style="text-align:right">Realizado (%)</th>
                 <th style="text-align:right">Desvio (pp)</th>
                 <th>Status</th>
@@ -140,7 +140,7 @@ window.CronogramaView = {
               <tr>
                 <th>Projeto</th>
                 <th>Responsável</th>
-                <th class="text-right">Previsto (%)</th>
+                <th class="text-right">LB (%)</th>
                 <th class="text-right">Realizado (%)</th>
                 <th class="text-right">Desvio (pp)</th>
                 <th>Status</th>
@@ -150,7 +150,7 @@ window.CronogramaView = {
               <tr v-for="row in projectSummary" :key="row.id" class="clickable" @click="$router.push('/projects/' + row.id + '?tab=cronograma')">
                 <td style="font-weight:600">{{ row.name }}</td>
                 <td class="text-sm text-muted">{{ row.responsible || '—' }}</td>
-                <td class="text-right" style="color:var(--green)">{{ row.planned !== null ? row.planned.toFixed(1) + '%' : '—' }}</td>
+                <td class="text-right" style="color:var(--green);font-weight:600">{{ row.planned !== null ? row.planned.toFixed(1) + '%' : '—' }}</td>
                 <td class="text-right" style="color:var(--info)">{{ row.actual !== null ? row.actual.toFixed(1) + '%' : '—' }}</td>
                 <td class="text-right" style="font-weight:700" :style="devStyle(row.dev)">
                   {{ row.dev !== null ? (row.dev > 0 ? '+' : '') + row.dev.toFixed(1) + ' pp' : '—' }}
@@ -634,7 +634,7 @@ window.CronogramaView = {
             labels,
             datasets: [
               {
-                label: 'Previsto (%)',
+                label: 'LB — Linha de Base (%)',
                 data: plannedData,
                 borderColor: '#1D6B3F', backgroundColor: 'rgba(29,107,63,.08)',
                 borderWidth: 2.5, tension: .35, fill: false,

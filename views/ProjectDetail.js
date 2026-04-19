@@ -515,7 +515,90 @@ window.ProjectDetailView = {
           <!-- Tabela de entrada -->
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
             <div class="section-title" style="margin-bottom:0">Avanço Físico Mensal (%)</div>
-            <button class="btn btn-secondary btn-sm" @click="addSchedRow">+ Adicionar Mês</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary btn-sm" @click="triggerSchedImport">📂 Importar Excel</button>
+              <button class="btn btn-secondary btn-sm" @click="addSchedRow">+ Adicionar Mês</button>
+            </div>
+          </div>
+          <input type="file" ref="schedFileInput" accept=".xlsx,.xls,.csv" style="display:none" @change="onSchedFileChange">
+
+          <div v-if="importSuccess" class="alert alert-info" style="margin-bottom:12px">{{ importSuccess }}</div>
+          <div v-if="importError && !importPanel" class="alert alert-danger" style="margin-bottom:12px">{{ importError }}</div>
+
+          <!-- Painel de import -->
+          <div v-if="importPanel" style="border:1px solid var(--border);border-radius:10px;margin-bottom:20px;overflow:hidden">
+            <div style="background:var(--bg);padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:700;font-size:14px">📂 Importar Cronograma</div>
+              <button class="btn btn-ghost btn-sm" @click="importPanel = false">✕ Fechar</button>
+            </div>
+            <div style="padding:16px">
+
+              <!-- Seleção de colunas -->
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+                <div>
+                  <div class="form-label" style="margin-bottom:4px">Coluna do Mês *</div>
+                  <select class="form-control" v-model="importColMonth">
+                    <option value="">— selecione —</option>
+                    <option v-for="h in importHeaders" :key="h.key" :value="h.key">{{ h.label }}</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="form-label" style="margin-bottom:4px;color:#1D6B3F">Coluna Previsto (%) *</div>
+                  <select class="form-control" v-model="importColPlanned" style="border-color:#C8E6C9">
+                    <option value="">— selecione —</option>
+                    <option v-for="h in importHeaders" :key="h.key" :value="h.key">{{ h.label }}</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="form-label" style="margin-bottom:4px;color:#1565C0">Coluna Realizado (%)</div>
+                  <select class="form-control" v-model="importColActual" style="border-color:#BBDEFB">
+                    <option value="">— nenhuma —</option>
+                    <option v-for="h in importHeaders" :key="h.key" :value="h.key">{{ h.label }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Preview dos dados parseados -->
+              <div v-if="importColMonth && importColPlanned" style="margin-bottom:14px">
+                <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">
+                  Pré-visualização — {{ importParsed.filter(r => r.ok).length }} linhas válidas de {{ importParsed.length }}
+                </div>
+                <div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:6px">
+                  <table class="table" style="font-size:12px;margin:0">
+                    <thead style="position:sticky;top:0;background:var(--bg)">
+                      <tr>
+                        <th>Mês (original)</th>
+                        <th>Mês (parseado)</th>
+                        <th style="text-align:right">Previsto (%)</th>
+                        <th style="text-align:right">Realizado (%)</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(r, i) in importParsed.slice(0, 30)" :key="i" :style="!r.ok ? 'opacity:.45' : ''">
+                        <td style="font-size:11px;color:var(--text-muted)">{{ r.raw }}</td>
+                        <td style="font-weight:600">{{ r.month || '—' }}</td>
+                        <td class="text-right" style="color:var(--green)">{{ r.planned !== '' ? r.planned + '%' : '—' }}</td>
+                        <td class="text-right" style="color:var(--info)">{{ r.actual  !== '' ? r.actual  + '%' : '—' }}</td>
+                        <td>
+                          <span v-if="r.ok" class="badge badge-green" style="font-size:10px">OK</span>
+                          <span v-else class="badge badge-red" style="font-size:10px">Mês inválido</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div v-if="importError" class="alert alert-danger" style="margin-bottom:10px;font-size:13px">{{ importError }}</div>
+
+              <div style="display:flex;gap:10px">
+                <button class="btn btn-primary btn-sm" @click="confirmSchedImport" :disabled="!importColMonth || !importColPlanned">
+                  ✅ Importar {{ importParsed.filter(r => r.ok).length }} meses
+                </button>
+                <button class="btn btn-secondary btn-sm" @click="importPanel = false">Cancelar</button>
+              </div>
+            </div>
           </div>
 
           <div v-if="scheduleRows.length === 0" style="color:var(--text-muted);font-size:13px;padding:8px 0">
@@ -590,6 +673,9 @@ window.ProjectDetailView = {
       sCurveRows: [], showTaskForm: false,
       taskForm: { title: '', responsible: '', status: 'todo', priority: 'medium', due_date: '' },
       chartInstance: null, schedChartInstance: null,
+      importPanel: false, importHeaders: [], importRawRows: [],
+      importColMonth: '', importColPlanned: '', importColActual: '',
+      importError: '', importSuccess: '',
       tabs: [
         { key: 'overview',    label: '📋 Visão Geral' },
         { key: 'financial',   label: '💰 Financeiro' },
@@ -629,6 +715,18 @@ window.ProjectDetailView = {
     currentMonth() {
       const now = new Date();
       return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    },
+    importParsed() {
+      if (!this.importColMonth) return [];
+      return this.importRawRows.map(row => {
+        const rawMonth   = row[this.importColMonth];
+        const rawPlanned = row[this.importColPlanned] ?? '';
+        const rawActual  = row[this.importColActual]  ?? '';
+        const month   = this.parseMonth(rawMonth);
+        const planned = rawPlanned !== '' ? parseFloat(String(rawPlanned).replace(',', '.').replace('%','')) : '';
+        const actual  = rawActual  !== '' ? parseFloat(String(rawActual ).replace(',', '.').replace('%','')) : '';
+        return { raw: rawMonth, month, planned: isNaN(planned) ? '' : planned, actual: isNaN(actual) ? '' : actual, ok: !!month };
+      }).filter(r => r.raw !== undefined && r.raw !== '');
     },
   },
   watch: {
@@ -832,6 +930,111 @@ window.ProjectDetailView = {
       this.showTaskForm = false;
     },
     deleteTask(id) { if (confirm('Excluir tarefa?')) Store.deleteTask(id); },
+
+    // ── Import de cronograma ─────────────────────────────────────────────────
+    triggerSchedImport() { this.$refs.schedFileInput.click(); },
+
+    onSchedFileChange(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      this.importError = ''; this.importSuccess = '';
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          if (!window.XLSX) { this.importError = 'Biblioteca de leitura não carregada. Recarregue a página.'; return; }
+          const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          if (data.length < 2) { this.importError = 'Arquivo sem dados.'; return; }
+
+          // First non-empty row is header
+          const headerRow = data.find(r => r.some(c => c !== ''));
+          const headerIdx = data.indexOf(headerRow);
+          const headers = (headerRow || []).map((h, i) => ({ key: String(i), label: String(h || `Coluna ${i+1}`) }));
+          const rows = data.slice(headerIdx + 1)
+            .filter(r => r.some(c => c !== ''))
+            .slice(0, 60)
+            .map(r => {
+              const obj = {};
+              headers.forEach((h, i) => { obj[h.key] = r[i] ?? ''; });
+              return obj;
+            });
+
+          this.importHeaders = headers;
+          this.importRawRows = rows;
+          this.detectColumns(headers);
+          this.importPanel = true;
+        } catch (err) {
+          this.importError = 'Erro ao ler arquivo: ' + err.message;
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      e.target.value = '';
+    },
+
+    detectColumns(headers) {
+      const find = (keywords) => {
+        const h = headers.find(h => keywords.some(k => h.label.toLowerCase().includes(k)));
+        return h ? h.key : '';
+      };
+      this.importColMonth   = find(['mês','mes','month','período','periodo','data','period','competência','competencia']);
+      this.importColPlanned = find(['previsto','planned','plano','baseline','plan %','% plan','% prev','programado']);
+      this.importColActual  = find(['realizado','actual','real','concluído','concluido','complete','% real','% conc','executado']);
+    },
+
+    parseMonth(val) {
+      if (val === null || val === undefined || val === '') return null;
+      // Date object (from SheetJS cellDates)
+      if (val instanceof Date) {
+        return `${val.getFullYear()}-${String(val.getMonth()+1).padStart(2,'0')}`;
+      }
+      const s = String(val).trim();
+      if (!s) return null;
+      // YYYY-MM
+      if (/^\d{4}-\d{2}$/.test(s)) return s;
+      // MM/YYYY
+      const m1 = s.match(/^(\d{1,2})\/(\d{4})$/);
+      if (m1) return `${m1[2]}-${m1[1].padStart(2,'0')}`;
+      // DD/MM/YYYY or D/M/YYYY
+      const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m2) return `${m2[3]}-${m2[2].padStart(2,'0')}`;
+      // MM/YY
+      const m3 = s.match(/^(\d{1,2})\/(\d{2})$/);
+      if (m3) return `20${m3[2]}-${m3[1].padStart(2,'0')}`;
+      // Jan/26, Jan/2026, Janeiro 2026, fev-26, etc.
+      const mnMap = { jan:1,fev:2,feb:2,mar:3,abr:4,apr:4,mai:5,may:5,jun:6,jul:7,ago:8,aug:8,set:9,sep:9,out:10,oct:10,nov:11,dez:12,dec:12,
+        janeiro:1,fevereiro:2,'março':3,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12 };
+      const m4 = s.toLowerCase().match(/([a-záéíóúç]+)[\s\/\-](\d{2,4})/);
+      if (m4) {
+        const mNum = mnMap[m4[1]] || mnMap[m4[1].substring(0,3)];
+        if (mNum) { const yr = m4[2].length === 2 ? `20${m4[2]}` : m4[2]; return `${yr}-${String(mNum).padStart(2,'0')}`; }
+      }
+      // Excel serial number
+      const num = parseFloat(s);
+      if (!isNaN(num) && num > 40000 && num < 55000) {
+        const d = new Date(Math.round((num - 25569) * 86400 * 1000));
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      }
+      return null;
+    },
+
+    confirmSchedImport() {
+      const valid = this.importParsed.filter(r => r.ok && (r.planned !== '' || r.actual !== ''));
+      if (valid.length === 0) { this.importError = 'Nenhuma linha válida encontrada. Verifique as colunas selecionadas.'; return; }
+      // Merge with existing — new data overwrites same month
+      const existing = [...(this.project.schedule || [])];
+      valid.forEach(r => {
+        const idx = existing.findIndex(e => e.month === r.month);
+        const entry = { month: r.month, planned: r.planned, actual: r.actual };
+        if (idx >= 0) existing[idx] = entry;
+        else existing.push(entry);
+      });
+      Store.updateProject(this.project.id, { ...this.project, schedule: existing });
+      this.importPanel = false;
+      this.importSuccess = `${valid.length} meses importados com sucesso!`;
+      setTimeout(() => { this.importSuccess = ''; }, 4000);
+      this.$nextTick(() => this.renderSchedChart());
+    },
 
     // ── Cronograma ────────────────────────────────────────────────────────────
     addSchedRow() {

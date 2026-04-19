@@ -729,6 +729,7 @@ window.ProjectDetailView = {
   },
   methods: {
     fc(v) { return formatCurrency(v); },
+    numberInput(v) { return numberInput(v); },
     statusLabel, statusColor, formatDate, isOverdue, formatMonth,
     formatDatetime(s) { if (!s) return '—'; return new Date(s).toLocaleDateString('pt-BR') + ' ' + new Date(s).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }); },
     buyerName(id) { return Store.state.buyers.find(b => b.id === id)?.name || '—'; },

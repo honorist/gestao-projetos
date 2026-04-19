@@ -523,7 +523,11 @@ window.ProjectDetailView = {
           <input type="file" ref="schedFileInput" accept=".mpp" style="display:none" @change="onSchedFileChange">
 
           <div v-if="importSuccess" class="alert alert-info" style="margin-bottom:12px">{{ importSuccess }}</div>
-          <div v-if="importError && !importPanel" class="alert alert-danger" style="margin-bottom:12px">{{ importError }}</div>
+          <div v-if="importLoading" class="alert alert-info" style="margin-bottom:12px;display:flex;align-items:center;gap:10px">
+            <div style="width:16px;height:16px;border:3px solid #C8E6C9;border-top-color:#1D6B3F;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></div>
+            Lendo arquivo .mpp e calculando curva S…
+          </div>
+          <div v-if="importError && !importPanel && !importLoading" class="alert alert-danger" style="margin-bottom:12px;white-space:pre-line">{{ importError }}</div>
 
           <!-- Painel de import -->
           <div v-if="importPanel" style="border:1px solid var(--border);border-radius:10px;margin-bottom:20px;overflow:hidden">
@@ -657,7 +661,7 @@ window.ProjectDetailView = {
       chartInstance: null, schedChartInstance: null,
       importPanel: false, importHeaders: [], importRawRows: [],
       importColMonth: '', importColPlanned: '', importColActual: '',
-      importError: '', importSuccess: '',
+      importError: '', importSuccess: '', importLoading: false,
       tabs: [
         { key: 'overview',    label: '📋 Visão Geral' },
         { key: 'financial',   label: '💰 Financeiro' },
@@ -922,22 +926,40 @@ window.ProjectDetailView = {
     // ── Import .mpp ──────────────────────────────────────────────────────────
     triggerSchedImport() { this.$refs.schedFileInput.click(); },
 
-    async loadMPXJ() {
-      if (window.MPXJReader || window.mpxj) return true;
-      return new Promise(resolve => {
+    loadScript(src) {
+      return new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/mpxj/dist/mpxj.umd.min.js';
-        s.onload  = () => resolve(true);
-        s.onerror = () => {
-          // fallback CDN
-          const s2 = document.createElement('script');
-          s2.src = 'https://unpkg.com/mpxj/dist/mpxj.umd.js';
-          s2.onload  = () => resolve(true);
-          s2.onerror = () => resolve(false);
-          document.head.appendChild(s2);
-        };
+        s.src = src; s.onload = res; s.onerror = rej;
         document.head.appendChild(s);
       });
+    },
+
+    async loadMPXJ() {
+      if (window._mpxjLoaded) return true;
+      // Tenta CDN principal, depois fallback
+      const cdns = [
+        'https://cdn.jsdelivr.net/npm/mpxj/dist/mpxj.umd.min.js',
+        'https://unpkg.com/mpxj/dist/mpxj.umd.js',
+        'https://cdn.jsdelivr.net/npm/mpxj/dist/mpxj.umd.js',
+      ];
+      for (const url of cdns) {
+        try { await this.loadScript(url); window._mpxjLoaded = true; return true; } catch (_) {}
+      }
+      return false;
+    },
+
+    getMPXJReader() {
+      // Tenta todas as formas que o UMD pode expor o reader
+      const ns = window.mpxj || window.MPXJ || {};
+      return (
+        window.MPXJReader ||
+        window.ProjectReader ||
+        window.UniversalProjectReader ||
+        ns.MPXJReader ||
+        ns.ProjectReader ||
+        ns.UniversalProjectReader ||
+        (ns.default && (ns.default.MPXJReader || ns.default.ProjectReader))
+      );
     },
 
     async onSchedFileChange(e) {
@@ -948,37 +970,57 @@ window.ProjectDetailView = {
       this.importPanel = false; this.importRawRows = []; this.importHeaders = [];
 
       const buf = await file.arrayBuffer();
+      this.importLoading = true;
 
       const ok = await this.loadMPXJ();
       if (!ok) {
-        this.importError = 'Não foi possível carregar a biblioteca MPXJ. Verifique sua conexão e tente novamente.';
+        this.importLoading = false;
+        this.importError = 'Não foi possível baixar a biblioteca MPXJ. Verifique sua conexão à internet e tente novamente.';
         return;
       }
 
       try {
-        // MPXJ UMD expõe MPXJReader ou mpxj.MPXJReader
-        const ReaderClass = window.MPXJReader || (window.mpxj && window.mpxj.MPXJReader);
-        if (!ReaderClass) throw new Error('MPXJReader não encontrado no módulo carregado.');
+        const ReaderClass = this.getMPXJReader();
+        if (!ReaderClass) {
+          // Debug: mostra o que foi carregado
+          const keys = Object.keys(window.mpxj || window.MPXJ || {}).join(', ') || '(vazio)';
+          throw new Error(`Classe leitora não encontrada. Chaves disponíveis: ${keys}. Tente recarregar a página.`);
+        }
 
-        const reader = new ReaderClass();
-        const project = await reader.read(buf);
-        const tasks   = project.getAllTasks();
+        const reader  = new ReaderClass();
+        // A API pode ser read() síncrono ou readAsync()
+        const project = typeof reader.readAsync === 'function'
+          ? await reader.readAsync(buf)
+          : await reader.read(buf);
 
-        // Filtra tarefas válidas: não-resumo, não-marco, com datas de baseline
-        const leafTasks = tasks.filter(t =>
-          !t.getSummary() && !t.getMilestone() &&
-          t.getBaselineStart() && t.getBaselineFinish()
+        const allTasks = typeof project.getAllTasks === 'function'
+          ? project.getAllTasks()
+          : (project.tasks || []);
+
+        // Filtra tarefas folha com baseline
+        const safe = (fn) => { try { return fn(); } catch { return null; } };
+        const leafTasks = allTasks.filter(t =>
+          !safe(() => t.getSummary()) &&
+          !safe(() => t.getMilestone()) &&
+          safe(() => t.getBaselineStart()) &&
+          safe(() => t.getBaselineFinish())
         );
 
         if (leafTasks.length === 0) {
-          this.importError = 'Nenhuma tarefa com dados de baseline encontrada. Verifique se o baseline está salvo no arquivo.';
+          this.importLoading = false;
+          this.importError =
+            `Nenhuma tarefa folha com baseline encontrada (total lido: ${allTasks.length} tarefas). ` +
+            'Confirme que o baseline está salvo: Projeto → Definir Linha de Base.';
           return;
         }
 
         const curves = this.buildMPPCurves(leafTasks);
-        if (curves.length === 0) { this.importError = 'Não foi possível calcular a curva S a partir das tarefas.'; return; }
+        this.importLoading = false;
+        if (curves.length === 0) {
+          this.importError = 'Curva S resultou em zero meses. Verifique as datas das tarefas.';
+          return;
+        }
 
-        // Formata como importRawRows para o painel de preview reutilizar o mesmo UI
         this.importHeaders = [
           { key: 'month',   label: 'Mês' },
           { key: 'planned', label: 'Previsto (%)' },
@@ -995,8 +1037,9 @@ window.ProjectDetailView = {
         this.importPanel = true;
 
       } catch (err) {
-        this.importError = 'Erro ao ler .mpp: ' + err.message +
-          '\nDica: salve o arquivo em formato .mpp legível pelo MS Project 2007+ e certifique-se de que há um baseline salvo.';
+        this.importLoading = false;
+        this.importError = 'Erro: ' + err.message;
+        console.error('[MPP Import]', err);
       }
     },
 

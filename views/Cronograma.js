@@ -166,15 +166,23 @@ window.CronogramaView = {
         </div>
       </div>
 
-      <!-- Placeholder: importação automática de cronogramas -->
+      <!-- Instrução de importação -->
       <div class="section" style="margin-bottom:20px">
-        <div class="section-title">Importação Automática de Cronogramas <span class="badge badge-yellow" style="font-size:11px;margin-left:8px">Em breve</span></div>
-        <div class="card" style="border:2px dashed var(--border);text-align:center;padding:40px;color:var(--text-muted)">
-          <div style="font-size:32px;margin-bottom:12px">📂</div>
-          <div style="font-weight:600;font-size:15px;margin-bottom:8px;color:var(--text)">Importação de pasta com cronogramas (.mpp / .xlsx)</div>
-          <div style="font-size:13px;max-width:500px;margin:0 auto;line-height:1.6">
-            Futuramente será possível selecionar a pasta onde estão os arquivos de cronograma de cada projeto.
-            O sistema irá ler o avanço do mês corrente automaticamente e alertar sobre projetos ausentes ou com erro.
+        <div class="section-title">Como importar cronogramas</div>
+        <div class="card" style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+          <div style="flex:1;min-width:220px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text)">📂 Por projeto (aba Cronograma)</div>
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.6">
+              Abra cada projeto → aba <strong>📅 Cronograma</strong> → botão <strong>Importar .mpp</strong>.
+              O sistema lê o baseline e o avanço real e calcula a curva S mensalmente.
+            </div>
+          </div>
+          <div style="border-left:1px solid var(--border);padding-left:24px;flex:1;min-width:220px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text)">✅ Requisito no arquivo .mpp</div>
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.6">
+              O arquivo precisa ter o <strong>baseline salvo</strong>: <em>Projeto → Definir Linha de Base → OK</em>.
+              Sem baseline não há curva de previsto.
+            </div>
           </div>
         </div>
       </div>

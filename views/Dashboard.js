@@ -421,18 +421,6 @@ window.DashboardView = {
         .slice(0, 5);
     },
 
-    // ── Disbursement month range ───────────────────────────────────────────────
-    disbursementMonthRange() {
-      const [cy, cm] = this.currentMonth.split('-').map(Number);
-      const months = [];
-      for (let i = -3; i <= 8; i++) {
-        let y = cy, m = cm + i;
-        while (m > 12) { m -= 12; y++; }
-        while (m < 1)  { m += 12; y--; }
-        months.push(`${y}-${String(m).padStart(2, '0')}`);
-      }
-      return months;
-    },
   },
 
   methods: {
@@ -461,11 +449,16 @@ window.DashboardView = {
       const canvas = this.$refs.disbChart;
       if (!canvas) return;
       if (this._disbChart) { this._disbChart.destroy(); this._disbChart = null; }
-      const months = this.disbursementMonthRange;
-      const labels = months.map(m => {
-        const [y, mo] = m.split('-');
-        return new Date(+y, +mo - 1, 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+
+      // Collect all months that exist in any project's disbursements
+      const monthSet = new Set();
+      this.projects.forEach(p => {
+        (p.disbursements || []).forEach(r => { if (r.month) monthSet.add(r.month); });
       });
+      if (monthSet.size === 0) return;
+      const months = [...monthSet].sort();
+
+      const labels = months.map(m => formatMonth(m));
       const toM = v => +(v / 1e6).toFixed(3);
       const blData     = months.map(m => toM(this.projects.reduce((s, p) => {
         const row = (p.disbursements || []).find(r => r.month === m);
@@ -509,18 +502,15 @@ window.DashboardView = {
       const canvas = this.$refs.trendChart;
       if (!canvas) return;
       if (this._trendChart) { this._trendChart.destroy(); this._trendChart = null; }
-      const [cy, cm] = this.currentMonth.split('-').map(Number);
-      const months = [];
-      for (let y = cy - 1; y <= cy; y++) {
-        const mEnd = y === cy ? cm : 12;
-        for (let m = 1; m <= mEnd; m++)
-          months.push(`${y}-${String(m).padStart(2, '0')}`);
-      }
-      const recent = months.slice(-18);
-      const labels = recent.map(m => {
-        const [y, mo] = m.split('-');
-        return new Date(+y, +mo - 1, 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+
+      // Collect all months from data, up to current month
+      const monthSet = new Set();
+      this.projects.forEach(p => {
+        (p.disbursements || []).forEach(r => { if (r.month && r.month <= this.currentMonth) monthSet.add(r.month); });
       });
+      if (monthSet.size === 0) return;
+      const recent = [...monthSet].sort().slice(-18);
+      const labels = recent.map(m => formatMonth(m));
       const toM = v => +(v / 1e6).toFixed(3);
       let cum = 0;
       const desvioData = recent.map(m => {

@@ -80,7 +80,7 @@ window.DashboardView = {
       <!-- Row 2: Desembolso | Desvios do Mês -->
       <div style="display:grid;grid-template-columns:1.7fr 1fr;gap:12px;margin-bottom:12px">
         <div class="card" style="padding:16px">
-          <div class="section-title" style="margin-bottom:10px">Desembolso por Mês (Mi BRL)</div>
+          <div class="section-title" style="margin-bottom:10px">Desembolso por Mês</div>
           <div style="height:200px"><canvas ref="disbChart"></canvas></div>
         </div>
         <div class="card" style="padding:16px">
@@ -494,28 +494,30 @@ window.DashboardView = {
       const months = [...monthSet].sort();
 
       const labels = months.map(m => formatMonth(m));
-      const toM = v => +(v / 1e6).toFixed(3);
-      const blData     = months.map(m => toM(this.projects.reduce((s, p) => {
+      const sum = (m, fn) => this.projects.reduce((s, p) => {
         const row = (p.disbursements || []).find(r => r.month === m);
-        return s + (row ? numberInput(row.baseline) : 0);
-      }, 0)));
-      const trendData  = months.map(m => toM(this.projects.reduce((s, p) => {
-        const row = (p.disbursements || []).find(r => r.month === m);
-        return s + (row ? this.rowTrend(row) : 0);
-      }, 0)));
-      const actualData = months.map(m => toM(this.projects.reduce((s, p) => {
-        const row = (p.disbursements || []).find(r => r.month === m);
-        return s + (row ? this.rowActual(row) : 0);
-      }, 0)));
+        return s + (row ? fn(row) : 0);
+      }, 0);
+      const blRaw     = months.map(m => sum(m, r => numberInput(r.baseline)));
+      const trendRaw  = months.map(m => sum(m, r => this.rowTrend(r)));
+      const actualRaw = months.map(m => sum(m, r => this.rowActual(r)));
+
+      // Auto-scale: choose unit based on max value
+      const maxVal = Math.max(...blRaw, ...trendRaw, ...actualRaw, 1);
+      let divisor = 1, unitLabel = 'R$';
+      if (maxVal >= 1e6)      { divisor = 1e6;  unitLabel = 'Mi'; }
+      else if (maxVal >= 1e3) { divisor = 1e3;  unitLabel = 'Mil'; }
+
+      const scale = v => +(v / divisor).toFixed(divisor >= 1e6 ? 2 : 1);
 
       this._disbChart = new Chart(canvas, {
         type: 'bar',
         data: {
           labels,
           datasets: [
-            { label: 'Baseline', data: blData,     backgroundColor: '#B0BEC5', borderRadius: 3 },
-            { label: 'Previsto', data: trendData,  backgroundColor: '#2196F3', borderRadius: 3 },
-            { label: 'Realizado',data: actualData, backgroundColor: '#1D6B3F', borderRadius: 3 },
+            { label: 'Baseline', data: blRaw.map(scale),     backgroundColor: '#B0BEC5', borderRadius: 3 },
+            { label: 'Previsto', data: trendRaw.map(scale),  backgroundColor: '#2196F3', borderRadius: 3 },
+            { label: 'Realizado',data: actualRaw.map(scale), backgroundColor: '#1D6B3F', borderRadius: 3 },
           ]
         },
         options: {
@@ -523,11 +525,11 @@ window.DashboardView = {
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: { position: 'bottom', labels: { font: { size: 10 } } },
-            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} Mi` } }
+            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y * divisor)}` } }
           },
           scales: {
             x: { ticks: { font: { size: 10 } } },
-            y: { ticks: { font: { size: 10 }, callback: v => v.toFixed(1) + ' Mi' } }
+            y: { ticks: { font: { size: 10 }, callback: v => v + ' ' + unitLabel } }
           }
         }
       });
@@ -546,9 +548,8 @@ window.DashboardView = {
       if (monthSet.size === 0) return;
       const recent = [...monthSet].sort().slice(-18);
       const labels = recent.map(m => formatMonth(m));
-      const toM = v => +(v / 1e6).toFixed(3);
       let cum = 0;
-      const desvioData = recent.map(m => {
+      const rawDesvio = recent.map(m => {
         const bl = this.projects.reduce((s, p) => {
           const row = (p.disbursements || []).find(r => r.month === m);
           return s + (row ? numberInput(row.baseline) : 0);
@@ -558,8 +559,14 @@ window.DashboardView = {
           return s + (row ? this.rowActual(row) : 0);
         }, 0);
         cum += actual - bl;
-        return toM(cum);
+        return cum;
       });
+
+      const maxAbs = Math.max(...rawDesvio.map(Math.abs), 1);
+      let divisor = 1, unitLabel = 'R$';
+      if (maxAbs >= 1e6)      { divisor = 1e6;  unitLabel = 'Mi'; }
+      else if (maxAbs >= 1e3) { divisor = 1e3;  unitLabel = 'Mil'; }
+      const desvioData = rawDesvio.map(v => +(v / divisor).toFixed(2));
 
       this._trendChart = new Chart(canvas, {
         type: 'line',
@@ -578,11 +585,11 @@ window.DashboardView = {
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: ctx => ` Desvio: ${ctx.parsed.y.toFixed(2)} Mi` } }
+            tooltip: { callbacks: { label: ctx => ` Desvio: ${formatCurrency(ctx.parsed.y * divisor)}` } }
           },
           scales: {
             x: { ticks: { font: { size: 10 } } },
-            y: { ticks: { font: { size: 10 }, callback: v => v.toFixed(1) + ' Mi' } }
+            y: { ticks: { font: { size: 10 }, callback: v => v + ' ' + unitLabel } }
           }
         }
       });

@@ -1046,90 +1046,60 @@ window.ProjectDetailView = {
     buildMPPCurves(tasks) {
       const toDate = d => d instanceof Date ? d : new Date(d);
       const toYM   = d => { const dt = toDate(d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`; };
-      const endOfMonth = ym => { const [y,m] = ym.split('-').map(Number); return new Date(y, m, 0, 23, 59, 59); }; // ultimo dia do mês
-
-      // Duração de linha de base de cada tarefa em dias
-      const taskWork = t => {
-        const dur = t.getBaselineDuration && t.getBaselineDuration();
-        if (dur) {
-          const val  = typeof dur.getDuration === 'function' ? dur.getDuration() : 0;
-          const unit = typeof dur.getUnits    === 'function' ? String(dur.getUnits()) : '';
-          // Converte para dias
-          if (unit.includes('HOUR') || unit.includes('HORA')) return val / 8;
-          if (unit.includes('WEEK') || unit.includes('SEM'))  return val * 5;
-          return val; // assume DAYS
-        }
-        // fallback: intervalo em dias
-        const bs = toDate(t.getBaselineStart()), bf = toDate(t.getBaselineFinish());
-        return Math.max(1, (bf - bs) / 86400000);
+      const endOfMonth = ym => { const [y,m] = ym.split('-').map(Number); return new Date(y, m, 0, 23, 59, 59); };
+      const durDays = dur => {
+        if (!dur) return 0;
+        const val  = typeof dur.getDuration === 'function' ? dur.getDuration() : 0;
+        const unit = typeof dur.getUnits    === 'function' ? String(dur.getUnits()) : '';
+        if (unit.includes('HOUR') || unit.includes('HORA')) return val / 8;
+        if (unit.includes('WEEK') || unit.includes('SEM'))  return val * 5;
+        return val;
       };
+      const spanDays = (s, f) => Math.max(1, (toDate(f) - toDate(s)) / 86400000);
+      const lbWork  = t => { const d = durDays(t.getBaselineDuration && t.getBaselineDuration()); return d > 0 ? d : spanDays(t.getBaselineStart(), t.getBaselineFinish()); };
+      const curWork = t => { const s = t.getStart && t.getStart(), f = t.getFinish && t.getFinish(); if (!s || !f) return lbWork(t); const d = durDays(t.getDuration && t.getDuration()); return d > 0 ? d : spanDays(s, f); };
+      const overlap = (start, finish, work, endDate) => { const s = toDate(start), f = toDate(finish); if (s > endDate) return 0; if (f <= endDate) return work; const span = f - s; if (span === 0) return work; return work * ((endDate - s) / span); };
 
-      const totalWork = tasks.reduce((s, t) => s + taskWork(t), 0);
-      if (totalWork === 0) return [];
+      const totalLB  = tasks.reduce((s, t) => s + lbWork(t), 0);
+      const totalCur = tasks.reduce((s, t) => s + curWork(t), 0) || totalLB;
+      if (totalLB === 0) return [];
 
-      // Todos os meses no range do projeto
       const monthSet = new Set();
       tasks.forEach(t => {
-        const bs = toDate(t.getBaselineStart()), bf = toDate(t.getBaselineFinish());
-        let d = new Date(bs.getFullYear(), bs.getMonth(), 1);
-        while (d <= bf) { monthSet.add(toYM(d)); d.setMonth(d.getMonth() + 1); }
+        const addRange = (s, f) => { let d = new Date(toDate(s).getFullYear(), toDate(s).getMonth(), 1); while (d <= toDate(f)) { monthSet.add(toYM(d)); d.setMonth(d.getMonth() + 1); } };
+        addRange(t.getBaselineStart(), t.getBaselineFinish());
+        const cs = t.getStart && t.getStart(), cf = t.getFinish && t.getFinish();
+        if (cs && cf) addRange(cs, cf);
+        const as = t.getActualStart && t.getActualStart(), af = t.getActualFinish && t.getActualFinish();
+        if (as) monthSet.add(toYM(toDate(as)));
+        if (af) monthSet.add(toYM(toDate(af)));
       });
 
-      // Inclui meses do avanço real (pode ultrapassar o baseline)
-      tasks.forEach(t => {
-        const as = t.getActualStart && t.getActualStart();
-        const af = t.getActualFinish && t.getActualFinish();
-        if (as) { let d = new Date(toDate(as).getFullYear(), toDate(as).getMonth(), 1); monthSet.add(toYM(d)); }
-        if (af) { let d = new Date(toDate(af).getFullYear(), toDate(af).getMonth(), 1); monthSet.add(toYM(d)); }
-      });
+      const today = new Date(), nowYM = toYM(today);
 
-      const months  = [...monthSet].sort();
-      const today   = new Date();
-      const nowYM   = toYM(today);
-
-      // Função: quanto do trabalho de uma tarefa ocorre até endDate (linear)
-      const overlap = (start, finish, work, endDate) => {
-        const s = toDate(start), f = toDate(finish);
-        if (s > endDate) return 0;
-        if (f <= endDate) return work;
-        const span = f - s; if (span === 0) return work;
-        return work * ((endDate - s) / span);
-      };
-
-      return months.map(ym => {
+      return [...monthSet].sort().map(ym => {
         const eom = endOfMonth(ym);
+        let cumLB = 0;
+        tasks.forEach(t => { cumLB += overlap(t.getBaselineStart(), t.getBaselineFinish(), lbWork(t), eom); });
+        const lb = parseFloat(Math.min(100, (cumLB / totalLB) * 100).toFixed(1));
 
-        // Cumulativo planejado
-        let cumPlanned = 0;
-        tasks.forEach(t => {
-          cumPlanned += overlap(t.getBaselineStart(), t.getBaselineFinish(), taskWork(t), eom);
-        });
-        const planned = Math.min(100, (cumPlanned / totalWork) * 100);
+        let cumCur = 0;
+        tasks.forEach(t => { const cs = t.getStart && t.getStart(), cf = t.getFinish && t.getFinish(); if (cs && cf) cumCur += overlap(cs, cf, curWork(t), eom); else cumCur += overlap(t.getBaselineStart(), t.getBaselineFinish(), lbWork(t), eom); });
+        const planned = parseFloat(Math.min(100, (cumCur / totalCur) * 100).toFixed(1));
 
-        // Cumulativo realizado (só para meses até hoje)
         let actual = null;
         if (ym <= nowYM) {
           let cumActual = 0;
           tasks.forEach(t => {
             const as = t.getActualStart && t.getActualStart();
             if (!as) return;
-            const af    = t.getActualFinish && t.getActualFinish();
-            const pct   = (t.getPercentageComplete ? t.getPercentageComplete() : 0) / 100;
-            const bWork = taskWork(t);
-            const doneWork = pct * bWork;
-
-            if (af) {
-              // Tarefa concluída: distribuída entre actualStart e actualFinish
-              cumActual += overlap(as, af, doneWork, eom);
-            } else {
-              // Em andamento: distribuída entre actualStart e hoje
-              cumActual += overlap(as, today, doneWork, eom);
-            }
+            const af  = t.getActualFinish && t.getActualFinish();
+            const pct = (t.getPercentageComplete ? t.getPercentageComplete() : 0) / 100;
+            cumActual += overlap(as, af || today, pct * lbWork(t), eom);
           });
-          actual = parseFloat(Math.min(100, (cumActual / totalWork) * 100).toFixed(1));
+          actual = parseFloat(Math.min(100, (cumActual / totalLB) * 100).toFixed(1));
         }
-
-        return { month: ym, planned: parseFloat(planned.toFixed(1)), actual };
+        return { month: ym, lb, planned, actual };
       });
     },
 
@@ -1187,21 +1157,21 @@ window.ProjectDetailView = {
     },
     devStyle(dev) {
       if (dev === null || dev === undefined) return '';
-      if (Math.abs(dev) <= 5)  return 'color:var(--green)';
-      if (Math.abs(dev) <= 15) return 'color:var(--warning)';
+      if (dev >= -2)  return 'color:var(--green)';
+      if (dev >= -10) return 'color:var(--warning)';
       return 'color:var(--danger)';
     },
     devBadge(dev) {
       if (dev === null || dev === undefined) return '';
-      if (Math.abs(dev) <= 5)  return 'badge-green';
-      if (Math.abs(dev) <= 15) return 'badge-yellow';
+      if (dev >= -2)  return 'badge-green';
+      if (dev >= -10) return 'badge-yellow';
       return 'badge-red';
     },
     devLabel(dev) {
       if (dev === null || dev === undefined) return '—';
-      if (Math.abs(dev) <= 5) return 'No alvo';
-      if (dev < -5)           return 'Atrasado';
-      return 'Adiantado';
+      if (dev >= -2)  return 'No alvo';
+      if (dev >= -10) return 'Atraso';
+      return 'Grande Atraso';
     },
     renderSchedChart() {
       if (this.schedChartInstance) { this.schedChartInstance.destroy(); this.schedChartInstance = null; }

@@ -59,17 +59,21 @@ window.CronogramaView = {
       </div>
 
       <!-- Cards de resumo -->
-      <div v-if="selectedIds.length > 0" class="grid-3" style="margin-bottom:20px">
-        <div class="fin-card" style="border-left:4px solid #1D6B3F">
+      <div v-if="selectedIds.length > 0" class="grid-4" style="margin-bottom:20px">
+        <div class="fin-card" style="border-left:4px solid #7AB531">
           <div class="fin-label">LB — Linha de Base (mês atual)</div>
+          <div class="fin-value" style="color:#7AB531">{{ summaryStats.lb !== null ? summaryStats.lb.toFixed(1) + '%' : '—' }}</div>
+          <div class="card-sub">{{ selectedIds.length }} projeto(s)</div>
+        </div>
+        <div class="fin-card" style="border-left:4px solid #1D6B3F">
+          <div class="fin-label">Previsto (mês atual)</div>
           <div class="fin-value" style="color:#1D6B3F">{{ summaryStats.planned !== null ? summaryStats.planned.toFixed(1) + '%' : '—' }}</div>
-          <div class="card-sub">{{ selectedIds.length }} projeto(s) selecionado(s)</div>
         </div>
         <div class="fin-card" style="border-left:4px solid #1976D2">
-          <div class="fin-label">Avanço Realizado (mês atual)</div>
+          <div class="fin-label">Realizado (mês atual)</div>
           <div class="fin-value" style="color:#1565C0">{{ summaryStats.actual !== null ? summaryStats.actual.toFixed(1) + '%' : '—' }}</div>
         </div>
-        <div class="fin-card" :style="'border-left:4px solid ' + (summaryStats.dev === null ? '#9E9E9E' : Math.abs(summaryStats.dev) <= 5 ? '#1D6B3F' : Math.abs(summaryStats.dev) <= 15 ? '#FF9800' : '#f44336')">
+        <div class="fin-card" :style="'border-left:4px solid ' + (summaryStats.dev === null ? '#9E9E9E' : summaryStats.dev >= -2 ? '#1D6B3F' : summaryStats.dev >= -10 ? '#FF9800' : '#f44336')">
           <div class="fin-label">Desvio (pp)</div>
           <div class="fin-value" :style="devStyle(summaryStats.dev)">
             {{ summaryStats.dev !== null ? (summaryStats.dev > 0 ? '+' : '') + summaryStats.dev.toFixed(1) + ' pp' : '—' }}
@@ -99,8 +103,9 @@ window.CronogramaView = {
           <table class="table" style="table-layout:fixed;width:100%">
             <colgroup>
               <col style="width:110px">
-              <col style="width:160px">
-              <col style="width:160px">
+              <col style="width:130px">
+              <col style="width:130px">
+              <col style="width:130px">
               <col style="width:120px">
               <col>
             </colgroup>
@@ -108,6 +113,7 @@ window.CronogramaView = {
               <tr>
                 <th>Mês</th>
                 <th style="text-align:right">LB (%)</th>
+                <th style="text-align:right">Previsto (%)</th>
                 <th style="text-align:right">Realizado (%)</th>
                 <th style="text-align:right">Desvio (pp)</th>
                 <th>Status</th>
@@ -116,6 +122,7 @@ window.CronogramaView = {
             <tbody>
               <tr v-for="m in monthlyData" :key="m.month">
                 <td style="font-weight:600;white-space:nowrap">{{ m.label }}</td>
+                <td class="text-right" style="color:#7AB531">{{ m.lb !== null ? m.lb.toFixed(1) + '%' : '—' }}</td>
                 <td class="text-right" style="color:var(--green)">{{ m.planned !== null ? m.planned.toFixed(1) + '%' : '—' }}</td>
                 <td class="text-right" style="color:var(--info)">{{ m.actual !== null ? m.actual.toFixed(1) + '%' : '—' }}</td>
                 <td class="text-right" style="font-weight:700" :style="devStyle(m.dev)">
@@ -141,6 +148,7 @@ window.CronogramaView = {
                 <th>Projeto</th>
                 <th>Responsável</th>
                 <th class="text-right">LB (%)</th>
+                <th class="text-right">Previsto (%)</th>
                 <th class="text-right">Realizado (%)</th>
                 <th class="text-right">Desvio (pp)</th>
                 <th>Status</th>
@@ -150,7 +158,8 @@ window.CronogramaView = {
               <tr v-for="row in projectSummary" :key="row.id" class="clickable" @click="$router.push('/projects/' + row.id + '?tab=cronograma')">
                 <td style="font-weight:600">{{ row.name }}</td>
                 <td class="text-sm text-muted">{{ row.responsible || '—' }}</td>
-                <td class="text-right" style="color:var(--green);font-weight:600">{{ row.planned !== null ? row.planned.toFixed(1) + '%' : '—' }}</td>
+                <td class="text-right" style="color:#7AB531;font-weight:600">{{ row.lb !== null ? row.lb.toFixed(1) + '%' : '—' }}</td>
+                <td class="text-right" style="color:var(--green)">{{ row.planned !== null ? row.planned.toFixed(1) + '%' : '—' }}</td>
                 <td class="text-right" style="color:var(--info)">{{ row.actual !== null ? row.actual.toFixed(1) + '%' : '—' }}</td>
                 <td class="text-right" style="font-weight:700" :style="devStyle(row.dev)">
                   {{ row.dev !== null ? (row.dev > 0 ? '+' : '') + row.dev.toFixed(1) + ' pp' : '—' }}
@@ -302,43 +311,48 @@ window.CronogramaView = {
     monthlyData() {
       const cm = this.currentMonth;
       return this.allMonths.map(month => {
-        let wPlanned = 0, wTotal = 0, wActual = 0, wActualTotal = 0;
+        let wLB = 0, wPlanned = 0, wTotal = 0, wActual = 0, wActualTotal = 0;
         this.selectedProjects.forEach(p => {
           const entry = (p.schedule || []).find(r => r.month === month);
           if (!entry) return;
           const budget = Math.max(numberInput(p.budget) || 0, 1);
+          // lb: baseline original; planned: cronograma atual (pode ser reprogramado)
+          const lb = entry.lb !== undefined && entry.lb !== '' ? numberInput(entry.lb) : numberInput(entry.planned);
           const pl = numberInput(entry.planned);
+          wLB      += budget * lb;
           wPlanned += budget * pl;
-          wTotal += budget;
+          wTotal   += budget;
           const hasActual = entry.actual !== null && entry.actual !== undefined && entry.actual !== '';
           if (hasActual && month <= cm) {
             wActual += budget * numberInput(entry.actual);
             wActualTotal += budget;
           }
         });
+        const lb      = wTotal > 0 ? wLB / wTotal : null;
         const planned = wTotal > 0 ? wPlanned / wTotal : null;
         const actual  = wActualTotal > 0 ? wActual / wActualTotal : null;
         const dev = planned !== null && actual !== null ? actual - planned : null;
-        return { month, label: formatMonth(month), planned, actual, dev };
+        return { month, label: formatMonth(month), lb, planned, actual, dev };
       });
     },
     summaryStats() {
       const cm = this.currentMonth;
       const past = this.monthlyData.filter(m => m.month <= cm && m.planned !== null);
-      if (past.length === 0) return { planned: null, actual: null, dev: null };
+      if (past.length === 0) return { lb: null, planned: null, actual: null, dev: null };
       const last = past[past.length - 1];
-      return { planned: last.planned, actual: last.actual, dev: last.dev };
+      return { lb: last.lb, planned: last.planned, actual: last.actual, dev: last.dev };
     },
     projectSummary() {
       const cm = this.currentMonth;
       return this.selectedProjects.map(p => {
         const sched = (p.schedule || []).filter(r => r.month <= cm).sort((a, b) => a.month.localeCompare(b.month));
         const latest = sched.length > 0 ? sched[sched.length - 1] : null;
+        const lb      = latest ? (latest.lb !== undefined && latest.lb !== '' ? numberInput(latest.lb) : numberInput(latest.planned)) : null;
         const planned = latest ? numberInput(latest.planned) : null;
         const hasActual = latest && latest.actual !== null && latest.actual !== undefined && latest.actual !== '';
         const actual = hasActual ? numberInput(latest.actual) : null;
         const dev = planned !== null && actual !== null ? actual - planned : null;
-        return { id: p.id, name: p.name, responsible: p.responsible, planned, actual, dev };
+        return { id: p.id, name: p.name, responsible: p.responsible, lb, planned, actual, dev };
       });
     },
   },
@@ -364,21 +378,21 @@ window.CronogramaView = {
 
     devStyle(dev) {
       if (dev === null) return '';
-      if (Math.abs(dev) <= 5)  return 'color:var(--green)';
-      if (Math.abs(dev) <= 15) return 'color:var(--warning)';
+      if (dev >= -2)   return 'color:var(--green)';
+      if (dev >= -10)  return 'color:var(--warning)';
       return 'color:var(--danger)';
     },
     devBadge(dev) {
       if (dev === null) return '';
-      if (Math.abs(dev) <= 5)  return 'badge-green';
-      if (Math.abs(dev) <= 15) return 'badge-yellow';
+      if (dev >= -2)  return 'badge-green';
+      if (dev >= -10) return 'badge-yellow';
       return 'badge-red';
     },
     devLabel(dev) {
       if (dev === null) return '—';
-      if (Math.abs(dev) <= 5) return 'No alvo';
-      if (dev < -5)           return 'Atrasado';
-      return 'Adiantado';
+      if (dev >= -2)  return 'No alvo';
+      if (dev >= -10) return 'Atraso';
+      return 'Grande Atraso';
     },
 
     // ── Bulk MPP import ───────────────────────────────────────────────────────
@@ -470,18 +484,30 @@ window.CronogramaView = {
       const toDate = d => d instanceof Date ? d : new Date(d);
       const toYM   = d => { const dt = toDate(d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`; };
       const endOfMonth = ym => { const [y,m] = ym.split('-').map(Number); return new Date(y, m, 0, 23, 59, 59); };
-      const taskWork = t => {
-        const dur = t.getBaselineDuration && t.getBaselineDuration();
-        if (dur) {
-          const val  = typeof dur.getDuration === 'function' ? dur.getDuration() : 0;
-          const unit = typeof dur.getUnits    === 'function' ? String(dur.getUnits()) : '';
-          if (unit.includes('HOUR') || unit.includes('HORA')) return val / 8;
-          if (unit.includes('WEEK') || unit.includes('SEM'))  return val * 5;
-          return val;
-        }
-        const bs = toDate(t.getBaselineStart()), bf = toDate(t.getBaselineFinish());
-        return Math.max(1, (bf - bs) / 86400000);
+
+      const durDays = dur => {
+        if (!dur) return 0;
+        const val  = typeof dur.getDuration === 'function' ? dur.getDuration() : 0;
+        const unit = typeof dur.getUnits    === 'function' ? String(dur.getUnits()) : '';
+        if (unit.includes('HOUR') || unit.includes('HORA')) return val / 8;
+        if (unit.includes('WEEK') || unit.includes('SEM'))  return val * 5;
+        return val;
       };
+      const spanDays = (s, f) => Math.max(1, (toDate(f) - toDate(s)) / 86400000);
+
+      // Peso de cada tarefa = duração baseline em dias
+      const lbWork = t => {
+        const d = durDays(t.getBaselineDuration && t.getBaselineDuration());
+        return d > 0 ? d : spanDays(t.getBaselineStart(), t.getBaselineFinish());
+      };
+      // Peso pelo cronograma atual (reprogramado)
+      const curWork = t => {
+        const s = t.getStart && t.getStart(), f = t.getFinish && t.getFinish();
+        if (!s || !f) return lbWork(t);
+        const d = durDays(t.getDuration && t.getDuration());
+        return d > 0 ? d : spanDays(s, f);
+      };
+
       const overlap = (start, finish, work, endDate) => {
         const s = toDate(start), f = toDate(finish);
         if (s > endDate) return 0;
@@ -490,16 +516,20 @@ window.CronogramaView = {
         return work * ((endDate - s) / span);
       };
 
-      const totalWork = tasks.reduce((s, t) => s + taskWork(t), 0);
-      if (totalWork === 0) return [];
+      const totalLB  = tasks.reduce((s, t) => s + lbWork(t), 0);
+      const totalCur = tasks.reduce((s, t) => s + curWork(t), 0) || totalLB;
+      if (totalLB === 0) return [];
 
       const monthSet = new Set();
       tasks.forEach(t => {
-        let d = new Date(toDate(t.getBaselineStart()).getFullYear(), toDate(t.getBaselineStart()).getMonth(), 1);
-        const bf = toDate(t.getBaselineFinish());
-        while (d <= bf) { monthSet.add(toYM(d)); d.setMonth(d.getMonth() + 1); }
-        const as = t.getActualStart && t.getActualStart();
-        const af = t.getActualFinish && t.getActualFinish();
+        const addRange = (s, f) => {
+          let d = new Date(toDate(s).getFullYear(), toDate(s).getMonth(), 1);
+          while (d <= toDate(f)) { monthSet.add(toYM(d)); d.setMonth(d.getMonth() + 1); }
+        };
+        addRange(t.getBaselineStart(), t.getBaselineFinish());
+        const cs = t.getStart && t.getStart(), cf = t.getFinish && t.getFinish();
+        if (cs && cf) addRange(cs, cf);
+        const as = t.getActualStart && t.getActualStart(), af = t.getActualFinish && t.getActualFinish();
         if (as) monthSet.add(toYM(toDate(as)));
         if (af) monthSet.add(toYM(toDate(af)));
       });
@@ -509,24 +539,35 @@ window.CronogramaView = {
 
       return [...monthSet].sort().map(ym => {
         const eom = endOfMonth(ym);
-        let cumPlanned = 0;
-        tasks.forEach(t => { cumPlanned += overlap(t.getBaselineStart(), t.getBaselineFinish(), taskWork(t), eom); });
-        const planned = parseFloat(Math.min(100, (cumPlanned / totalWork) * 100).toFixed(1));
 
+        // LB: curva do baseline original
+        let cumLB = 0;
+        tasks.forEach(t => { cumLB += overlap(t.getBaselineStart(), t.getBaselineFinish(), lbWork(t), eom); });
+        const lb = parseFloat(Math.min(100, (cumLB / totalLB) * 100).toFixed(1));
+
+        // Previsto: curva do cronograma atual (reprogramado)
+        let cumCur = 0;
+        tasks.forEach(t => {
+          const cs = t.getStart && t.getStart(), cf = t.getFinish && t.getFinish();
+          if (cs && cf) cumCur += overlap(cs, cf, curWork(t), eom);
+          else cumCur += overlap(t.getBaselineStart(), t.getBaselineFinish(), lbWork(t), eom);
+        });
+        const planned = parseFloat(Math.min(100, (cumCur / totalCur) * 100).toFixed(1));
+
+        // Realizado
         let actual = null;
         if (ym <= nowYM) {
           let cumActual = 0;
           tasks.forEach(t => {
             const as = t.getActualStart && t.getActualStart();
             if (!as) return;
-            const af   = t.getActualFinish && t.getActualFinish();
-            const pct  = (t.getPercentageComplete ? t.getPercentageComplete() : 0) / 100;
-            const done = pct * taskWork(t);
-            cumActual += overlap(as, af || today, done, eom);
+            const af  = t.getActualFinish && t.getActualFinish();
+            const pct = (t.getPercentageComplete ? t.getPercentageComplete() : 0) / 100;
+            cumActual += overlap(as, af || today, pct * lbWork(t), eom);
           });
-          actual = parseFloat(Math.min(100, (cumActual / totalWork) * 100).toFixed(1));
+          actual = parseFloat(Math.min(100, (cumActual / totalLB) * 100).toFixed(1));
         }
-        return { month: ym, planned, actual };
+        return { month: ym, lb, planned, actual };
       });
     },
 

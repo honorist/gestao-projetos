@@ -90,6 +90,9 @@ const AppShell = {
   }
 };
 
-const app = createApp(AppShell);
-app.use(router);
-app.mount('#app');
+Store.init().finally(() => {
+  const app = createApp(AppShell);
+  app.use(router);
+  app.mount('#app');
+  document.getElementById('loading-screen').style.display = 'none';
+});

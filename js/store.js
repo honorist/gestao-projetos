@@ -94,26 +94,59 @@
     };
   }
 
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) {}
-  const state = Vue.reactive(saved || defaultData());
+  const state = Vue.reactive(defaultData());
+  let _ignoreSnapshot = false;
 
-  // Migrate older data that may be missing newer fields
-  if (!state.coordinators || state.coordinators.length === 0) state.coordinators = defaultData().coordinators;
-  if (!state.managers || state.managers.length === 0) state.managers = defaultData().managers;
-  if (!state.consultants) state.consultants = defaultData().consultants;
-  if (!state.budgetCategories) state.budgetCategories = defaultData().budgetCategories;
-  if (!state.procurements) state.procurements = [];
-  if (!state.supplyCoordinators) state.supplyCoordinators = [];
-  if (!state.rateios) state.rateios = [];
-  if (!state.implantadores) state.implantadores = [];
+  function applyMigrations() {
+    if (!state.coordinators || state.coordinators.length === 0) state.coordinators = defaultData().coordinators;
+    if (!state.managers || state.managers.length === 0) state.managers = defaultData().managers;
+    if (!state.consultants) state.consultants = defaultData().consultants;
+    if (!state.budgetCategories) state.budgetCategories = defaultData().budgetCategories;
+    if (!state.procurements) state.procurements = [];
+    if (!state.supplyCoordinators) state.supplyCoordinators = [];
+    if (!state.rateios) state.rateios = [];
+    if (!state.implantadores) state.implantadores = [];
+  }
 
   window.Store = {
     state,
 
+    async init() {
+      try {
+        const data = await FirebaseService.load();
+        if (data) {
+          Object.assign(state, data);
+        } else {
+          await this.save();
+        }
+        applyMigrations();
+
+        // Escuta mudanças em tempo real de outros usuários
+        FirebaseService.onSnapshot(data => {
+          if (_ignoreSnapshot) return;
+          Object.assign(state, data);
+          applyMigrations();
+        });
+      } catch (e) {
+        console.warn('Firebase indisponível, usando localStorage:', e);
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (saved) Object.assign(state, saved);
+        } catch (_) {}
+        applyMigrations();
+      }
+    },
+
     save() {
+      // Salva localStorage como cache local
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       if (window.BackupService) BackupService.saveBackup(state);
+      // Salva no Firebase
+      _ignoreSnapshot = true;
+      const data = JSON.parse(JSON.stringify(state));
+      FirebaseService.save(data)
+        .catch(e => console.error('Erro ao salvar no Firebase:', e))
+        .finally(() => { setTimeout(() => { _ignoreSnapshot = false; }, 1500); });
     },
 
     // ── PROJECTS ──────────────────────────────────────────────────────────────

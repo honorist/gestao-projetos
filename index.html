@@ -6,9 +6,32 @@
   <title>CMPC — Gestão de Projetos</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/components.css">
+  <style>
+    #loading-screen {
+      position: fixed; inset: 0; background: #F2F3F2;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 9999; gap: 16px;
+    }
+    #loading-screen .spin {
+      width: 40px; height: 40px; border: 4px solid #E2E5E2;
+      border-top-color: #7AB531; border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-screen p { color: #58595B; font-family: sans-serif; font-size: 14px; }
+  </style>
 </head>
 <body>
+  <div id="loading-screen">
+    <div class="spin"></div>
+    <p>Carregando dados...</p>
+  </div>
+
   <div id="app"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
   <!-- Libraries -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
@@ -17,6 +40,7 @@
 
   <!-- App core -->
   <script src="js/utils.js"></script>
+  <script src="js/firebase.js"></script>
   <script src="import_projects.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/store.js"></script>

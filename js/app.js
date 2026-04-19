@@ -15,6 +15,7 @@ const router = createRouter({
     { path: '/procurement', component: window.ProcurementView },
     { path: '/rateio', component: window.RateioView },
     { path: '/obras', component: window.ObrasView },
+    { path: '/cronograma', component: window.CronogramaView },
     { path: '/orientacoes', component: window.OrientacoesView },
     { path: '/settings', component: window.SettingsView },
   ]
@@ -63,6 +64,9 @@ const AppShell = {
           </a>
           <a href="#/obras" class="nav-item" :class="{ active: navActive('/obras') }">
             <span class="nav-icon">🏗️</span> Obras
+          </a>
+          <a href="#/cronograma" class="nav-item" :class="{ active: navActive('/cronograma') }">
+            <span class="nav-icon">📅</span> Cronograma
           </a>
           <a href="#/tasks" class="nav-item" :class="{ active: navActive('/tasks') }">
             <span class="nav-icon">✅</span> Tarefas

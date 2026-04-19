@@ -106,6 +106,7 @@
     if (!state.supplyCoordinators) state.supplyCoordinators = [];
     if (!state.rateios) state.rateios = [];
     if (!state.implantadores) state.implantadores = [];
+    state.projects.forEach(p => { if (!p.schedule) p.schedule = []; });
   }
 
   window.Store = {
@@ -205,7 +206,7 @@
         scope: d.scope || '',
         benefit: d.benefit || '',
         description: d.description || '',
-        progress_pct: 0, s_curve: [], disbursements: [], notes: d.notes || '',
+        progress_pct: 0, s_curve: [], disbursements: [], schedule: [], notes: d.notes || '',
         coordinator: d.coordinator || '',
         impl_eia: d.impl_eia || '', impl_mecanica: d.impl_mecanica || '',
         impl_civil: d.impl_civil || '', impl_seguranca: d.impl_seguranca || '',

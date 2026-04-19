@@ -500,6 +500,87 @@ window.ProjectDetailView = {
             </table>
           </div>
         </div>
+
+        <!-- TAB: CRONOGRAMA -->
+        <div v-if="activeTab === 'cronograma'">
+          <!-- Mini curva S -->
+          <div class="chart-wrap" style="margin-bottom:20px">
+            <div class="chart-title">Curva S — Avanço Físico do Projeto (%)</div>
+            <canvas ref="schedChart" :style="hasSchedData ? 'max-height:220px' : 'display:none'"></canvas>
+            <div v-if="!hasSchedData" style="text-align:center;padding:40px;color:var(--text-muted)">
+              Adicione dados mensais abaixo para gerar a Curva S.
+            </div>
+          </div>
+
+          <!-- Tabela de entrada -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div class="section-title" style="margin-bottom:0">Avanço Físico Mensal (%)</div>
+            <button class="btn btn-secondary btn-sm" @click="addSchedRow">+ Adicionar Mês</button>
+          </div>
+
+          <div v-if="scheduleRows.length === 0" style="color:var(--text-muted);font-size:13px;padding:8px 0">
+            Nenhum mês cadastrado. Clique em "+ Adicionar Mês" para iniciar.
+          </div>
+
+          <div class="table-wrap" v-if="scheduleRows.length > 0">
+            <table class="table" style="table-layout:fixed;width:100%">
+              <colgroup>
+                <col style="width:110px">
+                <col style="width:160px">
+                <col style="width:160px">
+                <col style="width:120px">
+                <col>
+                <col style="width:40px">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th style="text-align:right">Previsto (%)</th>
+                  <th style="text-align:right">Realizado (%)</th>
+                  <th style="text-align:right">Desvio (pp)</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in scheduleRows" :key="row.month">
+                  <td style="font-weight:600;white-space:nowrap">{{ formatMonth(row.month) }}</td>
+                  <td>
+                    <input type="number" min="0" max="100" step="0.1"
+                      :value="row.planned" placeholder="0.0" class="form-control"
+                      style="padding:4px 8px;font-size:13px;text-align:right;border-color:#C8E6C9"
+                      @change="e => saveSchedRow(row.month, 'planned', e.target.value)">
+                  </td>
+                  <td>
+                    <input type="number" min="0" max="100" step="0.1"
+                      :value="row.actual" placeholder="—" class="form-control"
+                      :disabled="row.month > currentMonth"
+                      style="padding:4px 8px;font-size:13px;text-align:right;border-color:#BBDEFB"
+                      :style="row.month > currentMonth ? 'background:var(--bg);color:var(--text-muted);cursor:not-allowed;border-color:#BBDEFB' : 'border-color:#BBDEFB'"
+                      @change="e => saveSchedRow(row.month, 'actual', e.target.value)">
+                  </td>
+                  <td class="text-right" style="font-weight:700"
+                    :style="devStyle(row.planned !== '' && row.actual !== '' && row.actual !== null ? numberInput(row.actual) - numberInput(row.planned) : null)">
+                    {{ row.planned !== '' && row.actual !== '' && row.actual !== null
+                      ? ((numberInput(row.actual) - numberInput(row.planned)) > 0 ? '+' : '') + (numberInput(row.actual) - numberInput(row.planned)).toFixed(1) + ' pp'
+                      : '—' }}
+                  </td>
+                  <td>
+                    <span v-if="row.planned !== '' && row.actual !== '' && row.actual !== null"
+                      class="badge" :class="devBadge(numberInput(row.actual) - numberInput(row.planned))">
+                      {{ devLabel(numberInput(row.actual) - numberInput(row.planned)) }}
+                    </span>
+                    <span v-else class="text-muted text-sm">—</span>
+                  </td>
+                  <td>
+                    <button class="btn-icon" @click="removeSchedRow(row.month)">🗑️</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </template>
     </div>
   `,
@@ -508,12 +589,13 @@ window.ProjectDetailView = {
       activeTab: 'overview', editMode: false, form: {},
       sCurveRows: [], showTaskForm: false,
       taskForm: { title: '', responsible: '', status: 'todo', priority: 'medium', due_date: '' },
-      chartInstance: null,
+      chartInstance: null, schedChartInstance: null,
       tabs: [
-        { key: 'overview', label: '📋 Visão Geral' },
-        { key: 'financial', label: '💰 Financeiro' },
-        { key: 'purchases', label: '🛒 Compras' },
-        { key: 'tasks', label: '✅ Tarefas' },
+        { key: 'overview',    label: '📋 Visão Geral' },
+        { key: 'financial',   label: '💰 Financeiro' },
+        { key: 'purchases',   label: '🛒 Compras' },
+        { key: 'tasks',       label: '✅ Tarefas' },
+        { key: 'cronograma',  label: '📅 Cronograma' },
       ]
     };
   },
@@ -540,9 +622,20 @@ window.ProjectDetailView = {
     totalBaseline() { return this.sCurveRows.reduce((s, r) => s + numberInput(r.baseline), 0); },
     totalTrend()    { return this.sCurveRows.reduce((s, r) => s + this.rowTrend(r), 0); },
     totalActual()   { return this.sCurveRows.reduce((s, r) => s + this.rowActual(r), 0); },
+    scheduleRows() {
+      return [...(this.project?.schedule || [])].sort((a, b) => a.month.localeCompare(b.month));
+    },
+    hasSchedData() { return this.scheduleRows.length > 0; },
+    currentMonth() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    },
   },
   watch: {
-    activeTab(val) { if (val === 'financial') this.$nextTick(() => this.renderChart()); },
+    activeTab(val) {
+      if (val === 'financial')  this.$nextTick(() => this.renderChart());
+      if (val === 'cronograma') this.$nextTick(() => this.renderSchedChart());
+    },
   },
   methods: {
     fc(v) { return formatCurrency(v); },
@@ -738,8 +831,86 @@ window.ProjectDetailView = {
       this.taskForm = { title: '', responsible: '', status: 'todo', priority: 'medium', due_date: '' };
       this.showTaskForm = false;
     },
+    deleteTask(id) { if (confirm('Excluir tarefa?')) Store.deleteTask(id); },
 
-    deleteTask(id) { if (confirm('Excluir tarefa?')) Store.deleteTask(id); }
+    // ── Cronograma ────────────────────────────────────────────────────────────
+    addSchedRow() {
+      const existing = (this.project.schedule || []).map(r => r.month).sort();
+      let next = '';
+      if (existing.length > 0) {
+        const [y, m] = existing[existing.length - 1].split('-').map(Number);
+        const nm = m === 12 ? 1 : m + 1;
+        const ny = m === 12 ? y + 1 : y;
+        next = `${ny}-${String(nm).padStart(2,'0')}`;
+      } else {
+        next = this.currentMonth;
+      }
+      const sched = [...(this.project.schedule || []), { month: next, planned: '', actual: '' }];
+      Store.updateProject(this.project.id, { ...this.project, schedule: sched });
+    },
+    removeSchedRow(month) {
+      if (!confirm('Remover mês?')) return;
+      const sched = (this.project.schedule || []).filter(r => r.month !== month);
+      Store.updateProject(this.project.id, { ...this.project, schedule: sched });
+      this.$nextTick(() => this.renderSchedChart());
+    },
+    saveSchedRow(month, field, val) {
+      const sched = (this.project.schedule || []).map(r =>
+        r.month === month ? { ...r, [field]: val } : r
+      );
+      Store.updateProject(this.project.id, { ...this.project, schedule: sched });
+      this.$nextTick(() => this.renderSchedChart());
+    },
+    devStyle(dev) {
+      if (dev === null || dev === undefined) return '';
+      if (Math.abs(dev) <= 5)  return 'color:var(--green)';
+      if (Math.abs(dev) <= 15) return 'color:var(--warning)';
+      return 'color:var(--danger)';
+    },
+    devBadge(dev) {
+      if (dev === null || dev === undefined) return '';
+      if (Math.abs(dev) <= 5)  return 'badge-green';
+      if (Math.abs(dev) <= 15) return 'badge-yellow';
+      return 'badge-red';
+    },
+    devLabel(dev) {
+      if (dev === null || dev === undefined) return '—';
+      if (Math.abs(dev) <= 5) return 'No alvo';
+      if (dev < -5)           return 'Atrasado';
+      return 'Adiantado';
+    },
+    renderSchedChart() {
+      if (this.schedChartInstance) { this.schedChartInstance.destroy(); this.schedChartInstance = null; }
+      if (!this.hasSchedData) return;
+      const canvas = this.$refs.schedChart;
+      if (!canvas) return;
+      const cm = this.currentMonth;
+      const rows = this.scheduleRows;
+      const labels      = rows.map(r => formatMonth(r.month));
+      const plannedData = rows.map(r => r.planned !== '' && r.planned !== null ? numberInput(r.planned) : null);
+      const actualData  = rows.map(r => r.month <= cm && r.actual !== '' && r.actual !== null ? numberInput(r.actual) : null);
+      this.schedChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Previsto (%)', data: plannedData, borderColor: '#1D6B3F', backgroundColor: 'rgba(29,107,63,.08)', borderWidth: 2.5, tension: .35, fill: false, pointRadius: 3, pointBackgroundColor: '#1D6B3F' },
+            { label: 'Realizado (%)', data: actualData, borderColor: '#1976D2', backgroundColor: 'rgba(25,118,210,.1)', borderWidth: 2.5, tension: .35, fill: false, pointRadius: 4, pointBackgroundColor: '#1976D2', spanGaps: false },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { font: { size: 12 }, usePointStyle: true } },
+            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + '%' : '—'}` } }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(0,0,0,.05)' } },
+            y: { min: 0, max: 100, ticks: { callback: v => v + '%' }, grid: { color: 'rgba(0,0,0,.05)' } }
+          }
+        }
+      });
+    },
   },
   created() {
     if (this.project) {
@@ -754,5 +925,8 @@ window.ProjectDetailView = {
   mounted() {
     if (this.activeTab === 'financial') this.$nextTick(() => this.renderChart());
   },
-  beforeUnmount() { if (this.chartInstance) { this.chartInstance.destroy(); } }
+  beforeUnmount() {
+    if (this.chartInstance) this.chartInstance.destroy();
+    if (this.schedChartInstance) this.schedChartInstance.destroy();
+  }
 };

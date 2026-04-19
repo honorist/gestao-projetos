@@ -1,0 +1,622 @@
+[
+  {
+    "ts": "2026-04-18T14:08:43.424Z",
+    "action": "backup_folder_set",
+    "detail": "backups"
+  },
+  {
+    "ts": "2026-04-18T14:09:14.400Z",
+    "action": "project_add",
+    "detail": "asdasdas"
+  },
+  {
+    "ts": "2026-04-18T14:11:28.628Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:29.673Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:30.656Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:36.157Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:37.314Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:39.120Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:41.153Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:44.796Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:50.168Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:51.634Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:52.956Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:55.632Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:11:59.409Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:00.647Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:01.601Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:03.089Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:03.633Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:05.142Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:11.820Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:16.979Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:17.523Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:18.038Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:20.106Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:22.247Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:23.418Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:24.102Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T14:12:25.858Z",
+    "action": "project_update",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T16:04:27.023Z",
+    "action": "project_delete",
+    "detail": "teste"
+  },
+  {
+    "ts": "2026-04-18T16:04:30.144Z",
+    "action": "project_delete",
+    "detail": "asdasdas"
+  },
+  {
+    "ts": "2026-04-18T16:06:00.888Z",
+    "action": "project_add",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T16:07:32.144Z",
+    "action": "purchase_add",
+    "detail": "Montagem do sistema NR-20"
+  },
+  {
+    "ts": "2026-04-18T16:08:49.944Z",
+    "action": "purchase_add",
+    "detail": "Tela de proteção  - SM"
+  },
+  {
+    "ts": "2026-04-18T16:12:41.946Z",
+    "action": "project_add",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T16:13:55.872Z",
+    "action": "purchase_add",
+    "detail": "Compra da estação de medição de gás"
+  },
+  {
+    "ts": "2026-04-18T16:14:18.451Z",
+    "action": "purchase_add",
+    "detail": "Montagem EPC do sistema"
+  },
+  {
+    "ts": "2026-04-18T16:14:39.145Z",
+    "action": "project_update",
+    "detail": "NR-20 — Orçamento: \"$ 80\" → \"$ 80.000\""
+  },
+  {
+    "ts": "2026-04-18T16:14:44.556Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural — Orçamento: \"$ 620\" → \"$ 620.000\""
+  },
+  {
+    "ts": "2026-04-18T16:14:57.934Z",
+    "action": "purchase_update",
+    "detail": "Montagem do sistema NR-20 — Val. Estimado: \"$ 45\" → \"$ 45.000\" | Val. Cotado: \"$ 45\" → \"$ 45.000\" | Val. Aprovado: \"$ 45\" → \"$ 45.000\" | Val. Realizado: \"$ 45\" → \"$ 45.000\""
+  },
+  {
+    "ts": "2026-04-18T16:15:15.281Z",
+    "action": "purchase_update",
+    "detail": "Tela de proteção  - SM — Val. Estimado: \"$ 33\" → \"$ 32.600\" | Val. Cotado: \"$ 33\" → \"$ 326.000\" | Val. Aprovado: \"$ 33\" → \"$ 326.000\" | Val. Realizado: \"$ 33\" → \"$ 32.600\""
+  },
+  {
+    "ts": "2026-04-18T16:15:56.351Z",
+    "action": "purchase_update",
+    "detail": "Tela de proteção  - SM — Val. Cotado: \"$ 326.000\" → \"$ 32.600\" | Val. Aprovado: \"$ 326.000\" → \"$ 32.600\""
+  },
+  {
+    "ts": "2026-04-18T17:12:54.109Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:12:55.442Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:12:55.673Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:12:56.068Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:13:03.093Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:13:03.293Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:13:03.497Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:13:03.731Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:13:04.151Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:22:43.054Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:22:47.372Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:22:52.205Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:22:53.103Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:22:54.397Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:22:56.988Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:32:29.472Z",
+    "action": "project_update",
+    "detail": "NR-20 — Responsável: \"Honório\" → \"Honorio Dias Barbosa Filho\""
+  },
+  {
+    "ts": "2026-04-18T17:38:16.821Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural — Responsável: \"Honório\" → \"Honorio Dias Barbosa Filho\""
+  },
+  {
+    "ts": "2026-04-18T17:38:41.053Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:38:45.079Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:38:47.020Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:38:50.626Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:38:50.699Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:38:54.410Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:38:56.223Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:39:00.189Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:39:05.488Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:39:07.073Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:39:10.780Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:39:14.004Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:39:15.234Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:39:17.963Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:39:27.554Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:39:31.745Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:39:36.838Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T17:40:03.030Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:05.380Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:06.372Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:08.315Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:10.590Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:11.595Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:13.821Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:16.011Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:19.728Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:20.910Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:22.423Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:40:26.161Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-18T17:42:22.391Z",
+    "action": "project_update",
+    "detail": "NR-20 — Ger. Solicitante: \"Milton\" → \"Milton Ricardo Machado\""
+  },
+  {
+    "ts": "2026-04-18T18:03:39.499Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:03:51.944Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:03:59.154Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:04:02.271Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:04:06.705Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:04:11.744Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:04:15.408Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:06:58.447Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:06:59.722Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:07:00.635Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:07:02.063Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:07:03.941Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:07:04.826Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:08:25.717Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:11:08.407Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-18T18:31:28.786Z",
+    "action": "project_update",
+    "detail": "Melhoria do sistema de limpeza do duto de cinzas do Eco 1 da CR2 — Responsável: \"—\" → \"Marcos Machado\""
+  },
+  {
+    "ts": "2026-04-18T22:16:18.755Z",
+    "action": "purchase_update",
+    "detail": "Montagem do sistema NR-20"
+  },
+  {
+    "ts": "2026-04-19T01:23:20.537Z",
+    "action": "purchase_update",
+    "detail": "Tela de proteção  - SM"
+  },
+  {
+    "ts": "2026-04-19T01:24:15.066Z",
+    "action": "purchase_update",
+    "detail": "Tela de proteção  - SM"
+  },
+  {
+    "ts": "2026-04-19T01:46:21.308Z",
+    "action": "purchase_update",
+    "detail": "Tela de proteção  - SM"
+  },
+  {
+    "ts": "2026-04-19T02:14:14.537Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-19T02:14:16.827Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-19T02:14:23.942Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-19T02:14:27.531Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  },
+  {
+    "ts": "2026-04-19T02:34:15.147Z",
+    "action": "rateio_add",
+    "detail": "Timenow "
+  },
+  {
+    "ts": "2026-04-19T02:40:27.282Z",
+    "action": "rateio_update",
+    "detail": "Timenow "
+  },
+  {
+    "ts": "2026-04-19T02:40:40.937Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-19T02:40:43.821Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-19T02:44:11.567Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-19T11:18:49.356Z",
+    "action": "project_add",
+    "detail": "a"
+  },
+  {
+    "ts": "2026-04-19T11:27:26.287Z",
+    "action": "project_update",
+    "detail": "NR-20 — Fim Previsto: \"—\" → \"2026-04-22\""
+  },
+  {
+    "ts": "2026-04-19T11:27:45.003Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural — Fim Previsto: \"—\" → \"2027-08-31\""
+  },
+  {
+    "ts": "2026-04-19T11:29:11.003Z",
+    "action": "project_delete",
+    "detail": "a"
+  },
+  {
+    "ts": "2026-04-19T11:31:09.673Z",
+    "action": "project_update",
+    "detail": "Estação de medição de gás natural"
+  },
+  {
+    "ts": "2026-04-19T11:31:34.309Z",
+    "action": "project_update",
+    "detail": "NR-20"
+  }
+]

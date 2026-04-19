@@ -226,7 +226,13 @@ window.CronogramaView = {
       <!-- Importação em massa -->
       <div class="section" style="margin-bottom:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <div class="section-title" style="margin-bottom:0">Importar Cronogramas (.mpp ou .xml)</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="section-title" style="margin-bottom:0">Importar Cronogramas (.mpp ou .xml)</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted)">
+              <div :style="'width:8px;height:8px;border-radius:50%;background:' + (mppServerOnline ? '#4CAF50' : '#9E9E9E')"></div>
+              <span>{{ mppServerOnline ? 'Servidor .mpp ativo' : 'Servidor .mpp offline' }}</span>
+            </div>
+          </div>
           <button class="btn btn-secondary" @click="triggerBulkImport">📂 Selecionar arquivos .mpp / .xml</button>
           <input type="file" ref="bulkFileInput" accept=".mpp,.xml" multiple style="display:none" @change="onBulkFilesChange">
         </div>
@@ -304,6 +310,7 @@ window.CronogramaView = {
       filterLeader: '',
       selectedIds: [],
       selectedMonth: null,
+      mppServerOnline: false,
       chartInstance: null,
       // Bulk import
       bulkLoading: false,
@@ -503,6 +510,15 @@ window.CronogramaView = {
         if (matches >= 2 && matches > bestScore) { bestScore = matches; best = p; }
       }
       return best;
+    },
+
+    async pingMPPServer() {
+      try {
+        await fetch('http://localhost:3456/parse', { method: 'OPTIONS' });
+        this.mppServerOnline = true;
+      } catch {
+        this.mppServerOnline = false;
+      }
     },
 
     async parseMPPviaServer(file) {
@@ -796,6 +812,7 @@ window.CronogramaView = {
   mounted() {
     this.selectedIds = this.allProjects.map(p => p.id);
     this.$nextTick(() => this.renderChart());
+    this.pingMPPServer();
   },
 
   beforeUnmount() {

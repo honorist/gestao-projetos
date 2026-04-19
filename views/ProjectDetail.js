@@ -516,7 +516,10 @@ window.ProjectDetailView = {
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
             <div class="section-title" style="margin-bottom:0">Avanço Físico Mensal (%)</div>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-secondary btn-sm" @click="triggerSchedImport">📂 Importar .mpp / .xml</button>
+              <button class="btn btn-secondary btn-sm" @click="triggerSchedImport" :title="mppServerOnline ? 'Servidor .mpp ativo' : 'Servidor .mpp offline — use .xml ou execute npm run mpp'">
+                📂 Importar .mpp / .xml
+                <span :style="'display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:5px;background:' + (mppServerOnline ? '#4CAF50' : '#9E9E9E')"></span>
+              </button>
               <button class="btn btn-secondary btn-sm" @click="addSchedRow">+ Adicionar Mês</button>
             </div>
           </div>
@@ -662,6 +665,7 @@ window.ProjectDetailView = {
       importPanel: false, importHeaders: [], importRawRows: [],
       importColMonth: '', importColPlanned: '', importColActual: '',
       importError: '', importSuccess: '', importLoading: false,
+      mppServerOnline: false,
       tabs: [
         { key: 'overview',    label: '📋 Visão Geral' },
         { key: 'financial',   label: '💰 Financeiro' },
@@ -1174,6 +1178,9 @@ window.ProjectDetailView = {
   },
   mounted() {
     if (this.activeTab === 'financial') this.$nextTick(() => this.renderChart());
+    fetch('http://localhost:3456/parse', { method: 'OPTIONS' })
+      .then(() => { this.mppServerOnline = true; })
+      .catch(() => { this.mppServerOnline = false; });
   },
   beforeUnmount() {
     if (this.chartInstance) this.chartInstance.destroy();

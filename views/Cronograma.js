@@ -784,6 +784,7 @@ window.CronogramaView = {
           },
           options: {
             responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
             plugins: {
               legend: { position: 'top', labels: { font: { size: 12 }, usePointStyle: true } },
               tooltip: {

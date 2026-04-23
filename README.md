@@ -1,4 +1,4 @@
-# CMPC — Gestão de Projetos de Capital
+# XXXX — Gestão de Projetos de Capital
 
 Sistema web para gestão de projetos de capital, compras, suprimentos e equipes de implantação.
 
